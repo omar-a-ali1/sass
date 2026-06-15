@@ -41,7 +41,7 @@ const baseFormat = winston.format.combine(
 const transports = [
   new winston.transports.Console({
     format: winston.format.combine(
-      winston.format.colorize({ all: true }), // تلوين الليفل والنص في الكونسول فقط
+      winston.format.colorize({ all: true }),
       baseFormat
     )
   }),

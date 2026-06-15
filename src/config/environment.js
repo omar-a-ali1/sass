@@ -2,7 +2,10 @@ const dotenv = require('dotenv');
 const path = require('path');
 
 const envType = process.env.NODE_ENV || 'development';
-dotenv.config({ path: path.resolve(process.cwd(), `.env.${envType}`) });
+dotenv.config({
+  path: path.resolve(process.cwd(), `.env.${envType}`),
+  override: true
+});
 
 if (envType === 'production') {
   const criticalKeys = ['PORT', 'MONGO_URI', 'JWT_SECRET', 'CORS_ORIGIN'];
