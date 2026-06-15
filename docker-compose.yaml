@@ -1,0 +1,70 @@
+services:
+  mongodb_dev:
+    image: mongo:7.0
+    container_name: sass-mongodb-dev
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_dev_data:/data/db
+    networks:
+      - sass_network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  mongodb_test:
+    image: mongo:7.0
+    container_name: sass-mongodb-test
+    ports:
+      - "27018:27017"
+    volumes:
+      - mongo_test_data:/data/db
+    networks:
+      - sass_network
+    restart: unless-stopped
+
+  app_dev:
+    build:
+      context: .
+      target: development
+    container_name: sass-app-dev
+    env_file:
+      - .env.development
+    ports:
+      - "5000:5000"
+    volumes:
+      - .:/usr/src/app:z  
+      - /usr/src/app/node_modules
+    command: ["npm", "run", "dev"] 
+    depends_on:
+      mongodb_dev:
+        condition: service_healthy
+    networks:
+      - sass_network
+
+  app_test:
+    build:
+      context: .
+      target: development
+    container_name: sass-app-test
+    env_file:
+      - .env.test
+    volumes:
+      - .:/usr/src/app:z
+      - /usr/src/app/node_modules
+    depends_on:
+      - mongodb_test
+    networks:
+      - sass_network
+    command: ["npm", "run", "test"]
+
+networks:
+  sass_network:
+    driver: bridge
+
+volumes:
+  mongo_dev_data:
+  mongo_test_data:

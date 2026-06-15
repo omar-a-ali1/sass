@@ -1,0 +1,79 @@
+
+const SECURITY_DEFAULTS = {
+  RATE_LIMIT_WINDOW_MS: 15 * 60 * 1000,
+  RATE_LIMIT_MAX_REQUESTS: 100,
+  CORS_METHODS: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+  CORS_ALLOWED_HEADERS: ['Content-Type', 'Authorization', 'X-Request-ID']
+};
+
+const HTTP_REQUESTS = {
+  // 2xx Success
+  200: {
+    status: 'success',
+    message: 'The request has succeeded.',
+    log: 'OK - Request processed successfully.'
+  },
+  201: {
+    status: 'success',
+    message: 'Resource created successfully.',
+    log: 'CREATED - New resource has been persisted.'
+  },
+  204: {
+    status: 'success',
+    message: 'Operation completed successfully.',
+    log: 'NO_CONTENT - Request processed, no payload returned.'
+  },
+
+  300: {
+    status: 'redirect',
+    message: 'Multiple choices available.',
+    log: 'MULTIPLE_CHOICES - Client must choose a redirection path.'
+  },
+  301: {
+    status: 'redirect',
+    message: 'The resource has been moved permanently.',
+    log: 'MOVED_PERMANENTLY - Resource URL updated permanently.'
+  },
+
+  400: {
+    status: 'fail',
+    message: 'The data provided is invalid or corrupted.',
+    log: 'BAD_REQUEST - Validation failed or malformed payload.'
+  },
+  401: {
+    status: 'fail',
+    message: 'Authentication is required to access this resource.',
+    log: 'UNAUTHORIZED - Missing or invalid authentication token.'
+  },
+  403: {
+    status: 'fail',
+    message: 'You do not have permission to perform this action.',
+    log: 'FORBIDDEN - User lacks necessary roles/permissions.'
+  },
+  404: {
+    status: 'fail',
+    message: 'The requested resource could not be found.',
+    log: 'NOT_FOUND - Resource URL or ID does not exist.'
+  },
+  409: {
+    status: 'fail',
+    message: 'A conflict occurred. The resource might already exist.',
+    log: 'CONFLICT - Resource state conflict (e.g., duplicate email).'
+  },
+
+  500: {
+    status: 'error',
+    message: 'An unexpected internal server error occurred.',
+    log: 'INTERNAL_SERVER_ERROR - Uncaught exception or critical infrastructure crash.'
+  },
+  503: {
+    status: 'error',
+    message: 'The server is temporarily unavailable.',
+    log: 'SERVICE_UNAVAILABLE - Server overloaded or down for maintenance.'
+  }
+};
+
+module.exports = {
+  SECURITY_DEFAULTS,
+  HTTP_REQUESTS
+};
