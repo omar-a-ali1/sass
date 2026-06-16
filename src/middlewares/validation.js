@@ -1,10 +1,9 @@
-// src/middlewares/validation.js
-const ValidationError = require('../errors/validationError');
+const ValidationError = require('../errors/ValidationError');
 const formatJoiErrors = require('../helpers/formatJoiErrors');
 const { HTTP_REQUESTS } = require('../constants/system');
 
 const validate = (schema) => (req, res, next) => {
-  const { error, value } = schema.validate(req.body, { abortEarly: false });
+  const { error, value } = schema.validate(req.body??{}, { abortEarly: false });
 
   if (error) {
     const details = formatJoiErrors(error);

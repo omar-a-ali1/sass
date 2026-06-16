@@ -24,8 +24,6 @@ services:
       - mongo_test_data:/data/db
     networks:
       - sass_network
-    restart: unless-stopped
-
   app_dev:
     build:
       context: .
@@ -44,7 +42,6 @@ services:
         condition: service_healthy
     networks:
       - sass_network
-
   app_test:
     build:
       context: .

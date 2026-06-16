@@ -1,5 +1,5 @@
 const router = require('express').Router();
-const NotFoundError = require('../../errors/notFound');
+const NotFoundError = require('../../errors/NotFoundError');
 
 router.use( (req, res, next) => {
   

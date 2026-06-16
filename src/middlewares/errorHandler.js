@@ -1,6 +1,5 @@
-// src/middlewares/errorHandler.js
 const logger = require('../utils/logger');
-const { HTTP_REQUESTS } = require('../constants/system'); // 💡 1. استيراد القاموس لحل مشكلة config
+const { HTTP_REQUESTS } = require('../constants/system');
 
 const errorHandler = (err, req, res, next) => {
   const statusCode = err.statusCode || 500;

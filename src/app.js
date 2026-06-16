@@ -7,10 +7,9 @@ const tracer = require('./middlewares/tracer');
 const app = express()
 
 app.use(express.json())
-
+app.use(tracer)
 app.use(routes)
 
-app.use(tracer)
 app.use(errorHandler)
 
 module.exports = app
