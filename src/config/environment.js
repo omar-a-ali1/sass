@@ -34,7 +34,9 @@ module.exports = {
   port: parseInt(process.env.PORT, 10) || 3000,
 
   database: {
-    /** MongoDB connection URI */
+    /** Database driver (currently only 'mongo' is implemented) */
+    driver: process.env.DB_DRIVER || 'mongo',
+    /** Database connection URI */
     uri: process.env.MONGO_URI || 'mongodb://localhost:27017/myapp_dev',
   },
   bcrypt: {
@@ -59,5 +61,18 @@ module.exports = {
   rateLimit: {
     /** Maximum number of requests per rate-limit window */
     max: parseInt(process.env.RATE_LIMIT_MAX, 10) || null,
-  }
+  },
+
+  storage: {
+    /** Storage driver ('local' or 's3') */
+    driver: process.env.STORAGE_DRIVER || 'local',
+    /** Local upload directory (relative to project root) */
+    uploadDir: process.env.STORAGE_LOCAL_PATH || 'storage/uploads',
+    /** Public URL prefix for local files */
+    baseUrl: process.env.STORAGE_LOCAL_URL || '/uploads',
+    /** S3 bucket name (used when driver is 's3') */
+    s3Bucket: process.env.S3_BUCKET || '',
+    /** S3 region (used when driver is 's3') */
+    s3Region: process.env.S3_REGION || '',
+  },
 };

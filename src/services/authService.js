@@ -54,16 +54,17 @@ class AuthService
   }
 
   /**
-   * Authenticate a user and issue a JWT
+   * Authenticate a user and issue a JWT pair
    *
    * Looks up the user by email, compares the provided password
-   * against the stored hash, and on success generates a signed JWT.
+   * against the stored hash, and on success generates an access
+   * token and a refresh token.
    *
    * @async
    * @param {Object} userData           - Login credentials
    * @param {string} userData.email     - User's email address
    * @param {string} userData.password  - Raw password to verify
-   * @returns {Promise<{user: Object, token: string}>} Sanitized user + JWT
+   * @returns {Promise<{user: Object, accessToken: string, refreshToken: string}>} Tokens + profile
    * @throws {UnauthorizedError} If email not found or password mismatch
    */
   async loginUser(userData)
@@ -82,11 +83,48 @@ class AuthService
       throw new UnauthorizedError('Invalid email or password')
     }
 
-    const token = this.securityService.generateAuthToken(existingUser)
+    const accessToken = this.securityService.generateAuthToken(existingUser)
+    const refreshToken = this.securityService.generateRefreshToken(existingUser)
 
     return {
       user: sanitizeData(existingUser),
-      token: token
+      accessToken,
+      refreshToken
+    };
+  }
+
+  /**
+   * Issue a new access token using a valid refresh token
+   *
+   * Verifies the refresh token, looks up the user, and returns
+   * a fresh token pair.
+   *
+   * @async
+   * @param {string} refreshToken - Valid refresh JWT string
+   * @returns {Promise<{user: Object, accessToken: string, refreshToken: string}>} New token pair + profile
+   * @throws {UnauthorizedError} If refresh token is invalid or user not found
+   */
+  async refreshToken(refreshToken)
+  {
+    let decoded;
+    try {
+      decoded = this.securityService.verifyRefreshToken(refreshToken);
+    } catch (err) {
+      throw new UnauthorizedError('Invalid or expired refresh token');
+    }
+
+    const user = await this.userRepository.findById(decoded.id);
+    if (!user) {
+      throw new UnauthorizedError('User not found');
+    }
+
+    const newAccessToken = this.securityService.generateAuthToken(user);
+    const newRefreshToken = this.securityService.generateRefreshToken(user);
+
+    return {
+      user: sanitizeData(user),
+      accessToken: newAccessToken,
+      refreshToken: newRefreshToken
     };
   }
 }

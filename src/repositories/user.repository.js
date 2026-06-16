@@ -1,18 +1,23 @@
 /**
  * User Repository
  *
- * Data-access layer for the User model. Wraps Mongoose operations
- * behind a clean interface so that services never depend on the
- * ODM directly. Swapping the database backend only requires
- * changing this repository and the corresponding strategy.
+ * Data-access layer for the User model. Delegates all database
+ * operations to the injected database strategy, making the
+ * repository agnostic of the underlying engine (MongoDB, PostgreSQL).
  *
  * @module repositories/user.repository
  */
 
-const User = require('../models/User');
-
 class UserRepository
 {
+  /**
+   * @param {Object} deps
+   * @param {Object} deps.dbStrategy - Database strategy instance (e.g. MongoStrategy)
+   */
+  constructor({ dbStrategy }) {
+    this.db = dbStrategy;
+  }
+
   /**
    * Retrieve all users
    * @async
@@ -20,18 +25,18 @@ class UserRepository
    */
   async findAll()
   {
-    return await User.find();
+    return await this.db.find('User');
   }
 
   /**
-   * Find a user by their MongoDB _id
+   * Find a user by their database ID
    * @async
-   * @param {string} id - MongoDB ObjectId string
+   * @param {string} id - Document ID
    * @returns {Promise<Object|null>} User document or null
    */
   async findById(id)
   {
-    return await User.findById(id);
+    return await this.db.findById('User', id);
   }
 
   /**
@@ -42,7 +47,7 @@ class UserRepository
    */
   async findByEmail(email)
   {
-    return await User.findOne({ email });
+    return await this.db.findOne('User', { email });
   }
 
   /**
@@ -53,7 +58,7 @@ class UserRepository
    */
   async create(userData)
   {
-    return await User.create(userData)
+    return await this.db.create('User', userData);
   }
 }
 

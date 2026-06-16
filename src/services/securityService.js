@@ -38,19 +38,46 @@ class SecurityService {
   }
 
   /**
-   * Generate a signed JWT for an authenticated user
+   * Generate a signed access JWT for an authenticated user
    *
    * Builds a payload with `id` and `email`, then delegates signing
-   * to the security repository.
+   * to the security repository with the short-lived access token config.
    *
    * @param {Object} user      - Mongoose user document
    * @param {string} user._id  - User's MongoDB identifier
    * @param {string} user.email - User's email address
-   * @returns {string} Signed JWT string
+   * @returns {string} Signed access JWT string
    */
   generateAuthToken(user) {
     const payload = { id: user._id, email: user.email };
     return this.secRepository.assignJwt(payload);
+  }
+
+  /**
+   * Generate a signed refresh JWT for an authenticated user
+   *
+   * Uses the separate refresh secret and longer expiration.
+   *
+   * @param {Object} user      - Mongoose user document
+   * @param {string} user._id  - User's MongoDB identifier
+   * @param {string} user.email - User's email address
+   * @returns {string} Signed refresh JWT string
+   */
+  generateRefreshToken(user) {
+    const payload = { id: user._id, email: user.email };
+    return this.secRepository.assignRefreshJwt(payload);
+  }
+
+  /**
+   * Verify a refresh token and return the decoded payload
+   *
+   * @param {string} token - Refresh JWT string
+   * @returns {Object} Decoded payload { id, email, iat, exp }
+   * @throws {Error} If the token is invalid or expired
+   */
+  verifyRefreshToken(token) {
+    const { verifyRefreshJwt } = require('../repositories/security.repository');
+    return verifyRefreshJwt(token);
   }
 }
 module.exports = SecurityService
