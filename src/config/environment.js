@@ -23,7 +23,10 @@ module.exports = {
   database: {
     uri: process.env.MONGO_URI || 'mongodb://localhost:27017/myapp_dev',
   },
-  
+  bcrypt: {
+    salt : parseInt(process.env.BCRPT_SALT_SIZE, 10) ,
+    
+  },
   jwt: {
     secret: process.env.JWT_SECRET,
     expiresIn: process.env.JWT_EXPIRES_IN || '15m',

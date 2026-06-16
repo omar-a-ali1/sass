@@ -1,5 +1,4 @@
 *.env
 /node_modules
 docs
-command
 /storage

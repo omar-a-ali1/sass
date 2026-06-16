@@ -5,7 +5,7 @@ const logger = require("../utils/logger")
 morgan.token('id', (req) => req.id);
 
 const tracerMiddleware = (req, res, next) => {
-  req.id = req.headers['x-request-id'] || crypto.randomUUID().split('-')[0]; // نأخذ جزءاً قصيراً للتبسيط
+  req.id = req.headers['x-request-id'] || crypto.randomUUID().split('-')[0];
   
   res.setHeader('X-Request-ID', req.id);
 

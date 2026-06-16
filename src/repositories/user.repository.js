@@ -1,5 +1,4 @@
 const User = require('../models/User');
-
 class UserRepository 
 {
   async  findById(id)
@@ -13,6 +12,10 @@ class UserRepository
   async create(userData)
   {
     return await User.create(userData)
+  }
+  async hashPassword(pass)
+  {
+    
   }
   
 }

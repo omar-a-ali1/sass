@@ -1,0 +1,1 @@
+docker compose up  app_dev mongodb_dev

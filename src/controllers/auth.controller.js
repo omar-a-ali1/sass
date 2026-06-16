@@ -2,7 +2,7 @@ const ServerError = require('../errors/ServerError');
 
 const login = (req, res, next) =>
 {
-  return true
+  return res.status(200).json({})
 }
 const register = async (req, res,next) =>
 {
@@ -11,7 +11,7 @@ const register = async (req, res,next) =>
     const authService = req.getService('authService');
     const credential = req.validatedBody;
     const user = await authService.registerUser(credential)
-    return res.status(200).json({
+    return res.status(201).json({
           success: true,
           traceId: req.id,
           data: user

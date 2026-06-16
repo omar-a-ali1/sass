@@ -4,8 +4,10 @@ const ServerError = require('../errors/ServerError');
 
 class AuthService 
 {
-  constructor({ userRepository }) {
-      this.userRepository = userRepository;
+  constructor({securityService , userRepository }) {
+    this.userRepository = userRepository
+    this.securityService = securityService
+    
   }
   async registerUser(userData)
   {
@@ -15,6 +17,13 @@ class AuthService
         }
     const user = await this.userRepository.create(userData)
     return user;
+  }
+  async loginUser(userData)
+  {
+    const existingUser = await this.userRepository.findByEmail(userData.email);
+        if (!existingUser) {
+          throw new NotFoundError('the provided mail do not match our records please register');
+        }
   }
 
 }

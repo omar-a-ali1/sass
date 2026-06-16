@@ -22,13 +22,22 @@ const container = new DependencyContainer();
 
 //register services : 
 const AuthService = require('./authService')
+const SecurityService = require('./securityService')
+// repositories
 const UserRepository = require('../repositories/user.repository');
+const SecurityRepository = require('../repositories/securtiy.repository')
+
+const secService = new SecurityService({
+  secRepository:SecurityRepository
+})
+container.register('securityService', secService);
 
 const userRepo = new UserRepository();
 const authService = new AuthService({
-  userRepository: userRepo,
+  securityService:container.get('securityService'),
+  userRepository: userRepo
 });
 
-container.register('authService', authService);
 
+container.register('authService', authService);
 module.exports = container;
