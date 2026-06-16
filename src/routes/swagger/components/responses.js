@@ -1,3 +1,12 @@
+/**
+ * Shared OpenAPI Response Components
+ *
+ * Defines reusable error response shapes used across all API paths.
+ * Each response mirrors the framework's structured JSON error format.
+ *
+ * @module routes/swagger/components/responses
+ */
+
 module.exports = {
   ValidationError: {
       description: 'Bad Request - Input validation failed or input payload is corrupted',
@@ -62,6 +71,31 @@ module.exports = {
       }
     }
   ,
+  UnauthorizedError: {
+    description: 'Unauthorized - Authentication is required or credentials are invalid',
+    content: {
+      'application/json': {
+        schema: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean', example: false },
+            status: { type: 'string', example: 'fail' },
+            traceId: { type: 'string', example: 'a1b2c3d4' },
+            error: {
+              type: 'object',
+              properties: {
+                message: { type: 'string', example: 'Invalid email or password' },
+                stack: {
+                  type: 'string',
+                  example: 'Error: Invalid email or password\n    at AuthService.loginUser (/usr/src/app/src/services/authService.js:32:17)...'
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
   InternalServerError: {
     description: 'Internal Server Error - Something went wrong on the core system',
     content: {

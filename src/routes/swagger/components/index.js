@@ -1,9 +1,22 @@
+/**
+ * Shared OpenAPI Components
+ *
+ * Assembles all reusable specification objects:
+ * - Security schemes (bearer JWT)
+ * - Error response templates (400, 401, 409, 500)
+ * - Request/response schemas (auto-generated from Joi + manual entity schemas)
+ *
+ * @module routes/swagger/components/index
+ */
+
 const j2s = require('joi-to-swagger');
 const RegisterUserSchema = require('../../../validation/auth/register');
 const LoginUserSchema = require('../../../validation/auth/login');
 const baseResponses = require('./responses');
 const entitySchemas = require('../schemas');
+
 module.exports = {
+  /** Bearer JWT authentication scheme */
   securitySchemes: {
     bearerAuth: {
       type: 'http',
@@ -12,15 +25,20 @@ module.exports = {
       description: 'Enter your JWT token to access protected microservices.'
     }
   },
-  
+
+  /** Shared error response definitions */
   responses: baseResponses,
 
+  /** Request and response schema objects */
   schemas: {
+    /** Auto-generated from login Joi schema */
     LoginRequest: j2s(LoginUserSchema).swagger,
+    /** Auto-generated from register Joi schema */
     RegisterRequest: j2s(RegisterUserSchema).swagger,
 
-
     ...entitySchemas,
+
+    /** Inline user response shape (includes __v for debugging) */
     UserResponse: {
       type: 'object',
       properties: {

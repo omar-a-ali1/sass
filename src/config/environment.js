@@ -1,3 +1,13 @@
+/**
+ * Environment Configuration Module
+ *
+ * Loads environment-specific `.env.{NODE_ENV}` files using dotenv.
+ * In production, validates that critical environment variables are defined.
+ * Exports a typed configuration object consumed by the entire framework.
+ *
+ * @module config/environment
+ */
+
 const dotenv = require('dotenv');
 const path = require('path');
 
@@ -16,28 +26,38 @@ if (envType === 'production') {
   });
 }
 
+/** Application-wide configuration object */
 module.exports = {
+  /** Current runtime environment (development, production, test) */
   env: envType,
+  /** HTTP server port */
   port: parseInt(process.env.PORT, 10) || 3000,
-  
+
   database: {
+    /** MongoDB connection URI */
     uri: process.env.MONGO_URI || 'mongodb://localhost:27017/myapp_dev',
   },
   bcrypt: {
-    salt : parseInt(process.env.BCRPT_SALT_SIZE, 10) ,
-    
+    /** Number of bcrypt salt rounds for password hashing */
+    salt: parseInt(process.env.BCRPT_SALT_SIZE, 10),
   },
   jwt: {
+    /** Secret key used to sign access tokens */
     secret: process.env.JWT_SECRET,
+    /** Access token expiration duration (e.g. '15m', '1d') */
     expiresIn: process.env.JWT_EXPIRES_IN || '15m',
+    /** Secret key used to sign refresh tokens */
     refreshSecret: process.env.JWT_REFRESH_SECRET,
+    /** Refresh token expiration duration (e.g. '7d', '30d') */
     refreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
-  },  
+  },
   cors: {
+    /** Allowed CORS origin(s) */
     origin: process.env.CORS_ORIGIN || '*',
   },
-  
+
   rateLimit: {
-    max: parseInt(process.env.RATE_LIMIT_MAX, 10) || null, 
+    /** Maximum number of requests per rate-limit window */
+    max: parseInt(process.env.RATE_LIMIT_MAX, 10) || null,
   }
 };

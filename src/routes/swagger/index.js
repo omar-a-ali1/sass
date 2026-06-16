@@ -1,3 +1,15 @@
+/**
+ * OpenAPI Root Document
+ *
+ * Assembles the complete OpenAPI 3.0 specification for the framework.
+ * Paths are generated per-module, components (schemas, responses,
+ * security schemes) are composed from shared definitions, and
+ * request/response schemas are auto-generated from Joi validators
+ * via `joi-to-swagger`.
+ *
+ * @module routes/swagger/index
+ */
+
 const components = require('./components');
 const authPaths = require('./v1/auth.doc');
 

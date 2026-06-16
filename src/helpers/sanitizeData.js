@@ -1,8 +1,23 @@
 /**
- * Clean data documents by removing sensitive and internal metadata fields dynamically
- * @param {Object} doc - Raw Mongoose document or plain JavaScript object
- * @param {...string} fields - Optional specific fields to remove dynamically
- * @returns {Object} Cleaned plain JavaScript object
+ * Data Sanitizer
+ *
+ * Strips sensitive fields (password, __v) and internal metadata
+ * from Mongoose documents or plain objects before returning them
+ * in API responses. Additional fields can be removed dynamically.
+ *
+ * @module helpers/sanitizeData
+ */
+
+/**
+ * Sanitize a document by removing sensitive and internal fields
+ *
+ * Converts Mongoose documents to plain objects via `toObject()`,
+ * then deletes default sensitive fields (`__v`, `password`) plus
+ * any additional field names provided.
+ *
+ * @param {Object}   doc          - Raw Mongoose document or plain object
+ * @param {...string} fields       - Optional additional field names to remove
+ * @returns {Object|null} Cleaned plain object, or null if input is falsy
  */
 const sanitizeData = (doc, ...fields) => {
   if (!doc) return null;
