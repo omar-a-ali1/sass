@@ -28,7 +28,6 @@ class AppError extends Error
     this.status = HTTP_REQUESTS[statusCode]?.status || 'error'
     /** @type {boolean} Distinguishes expected operational errors from programmer bugs */
     this.isOperational = true;
-    Error.prepareStackTrace(this, this.constructor)
   }
 }
 
