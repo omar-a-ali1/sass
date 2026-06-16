@@ -1,8 +1,18 @@
-const ServerError = require('../errors/ServerError');
-
-const login = (req, res, next) =>
+const login = async (req, res, next) =>
 {
-  return res.status(200).json({})
+  try {
+    const authService = req.getService('authService');
+    const credential = req.validatedBody;
+    const data = await authService.loginUser(credential)
+    return res.status(201).json({
+      success: true,
+      traceId: req.id,
+      data
+    }) 
+  } catch (err)
+  {
+    next(err)
+  }
 }
 const register = async (req, res,next) =>
 {

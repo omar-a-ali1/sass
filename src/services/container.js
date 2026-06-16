@@ -25,10 +25,12 @@ const AuthService = require('./authService')
 const SecurityService = require('./securityService')
 // repositories
 const UserRepository = require('../repositories/user.repository');
-const SecurityRepository = require('../repositories/securtiy.repository')
+const SecurityRepository = require('../repositories/security.repository')
+
+const SecRepo = new SecurityRepository();
 
 const secService = new SecurityService({
-  secRepository:SecurityRepository
+  secRepository:SecRepo
 })
 container.register('securityService', secService);
 

@@ -1,6 +1,6 @@
 const AppError = require('./appErrors');
 
-class validationError extends AppError
+class ValidationError extends AppError
 {
   constructor(message)
   {
@@ -8,4 +8,4 @@ class validationError extends AppError
   }
 }
 
-module.exports = validationError
+module.exports = ValidationError

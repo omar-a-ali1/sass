@@ -33,5 +33,41 @@ module.exports = {
         500: { $ref: '#/components/responses/InternalServerError' }
       }
     }
-  }
+  },
+  '/auth/login': {
+    post: {
+      tags: ['Authentication'],
+      summary: 'login to api ',
+      description:'generate a jwt token to authenticate',
+      requestBody: {
+        required: true,
+        content: {
+          'application/json': {
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+          }
+        }
+      },
+      responses: {
+        201: {
+          description: 'Account provisioned successfully',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  success: { type: 'boolean', example: true },
+                  traceId: { type: 'string', example: '6e256651' },
+                  data: { $ref: '#/components/schemas/UserResponse' }
+                }
+              }
+            }
+          }
+        },
+        400: { $ref: '#/components/responses/ValidationError' },
+        409: { $ref: '#/components/responses/ConflictError' },
+        500: { $ref: '#/components/responses/InternalServerError' }
+      }
+    }
+  },
+
 };
