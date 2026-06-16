@@ -17,3 +17,18 @@ class DependencyContainer
     return this.services.get(name)
   }
 }
+
+const container = new DependencyContainer();
+
+//register services : 
+const AuthService = require('./authService')
+const UserRepository = require('../repositories/user.repository');
+
+const userRepo = new UserRepository();
+const authService = new AuthService({
+  userRepository: userRepo,
+});
+
+container.register('authService', authService);
+
+module.exports = container;

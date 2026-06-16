@@ -1,34 +1,22 @@
-const UserLogin = require("../validation/auth/login");
-const ServerError = require('../errors/ServerError')
-const Login = (req, res,next) =>
+const NotFoundError = require("../errors/NotFoundError");
+const ConflictError = require("../errors/ConflictError");
+const ServerError = require('../errors/ServerError');
+
+class AuthService 
 {
-  const validatedData  =req.validatedBody
-  try {
-    
-    return res.status(200).json({
-      success: true,
-      traceId: req.id,
-      data: validatedData ?? 'err'
-    })
-  } catch (err)
-  {
-    next(new ServerError())
+  constructor({ userRepository }) {
+      this.userRepository = userRepository;
   }
-}
-const Register = (req, res, next) => {
- try { 
-  return res.status(200).json({
-    success: true,
-    traceId: req.id,
-    data: req.body
-  })
-}catch (err)
+  async registerUser(userData)
   {
-    next(new ServerError())
+    const existingUser = await this.userRepository.findByEmail(userData.email);
+        if (existingUser) {
+          throw new ConflictError('Email already registered');
+        }
+    const user = await this.userRepository.create(userData)
+    return user;
   }
-    
+
 }
-module.exports = {
-  Login,
-  Register
-}
+
+module.exports = AuthService;

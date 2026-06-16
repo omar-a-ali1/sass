@@ -9,11 +9,15 @@ const schema = mongoose.Schema({
   
 })
 
-//  hash pass before every insertion 
-schema.pre('save',function next(){
-  this.password =  bcrypt.hash(this.password)
-  next()
-})
+schema.pre('save', async function (next) {
+
+  if (!this.isModified('password')) {
+    return;
+  }
+  const salt = await bcrypt.genSalt(12);
+  this.password = await bcrypt.hash(this.password, salt);
+    
+});
 const User = mongoose.model('User',schema)
 
 module.exports = User

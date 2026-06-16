@@ -1,13 +1,26 @@
-const AuthService = require('../services/authService')
+const ServerError = require('../errors/ServerError');
 
-
-const login = (req, res,next) =>
+const login = (req, res, next) =>
 {
-  return AuthService.Login()
+  return true
 }
-const register = (req, res,next) =>
+const register = async (req, res,next) =>
 {
-  return AuthService.Register(req,res,next)
+  try {
+    
+    const authService = req.getService('authService');
+    const credential = req.validatedBody;
+    const user = await authService.registerUser(credential)
+    return res.status(200).json({
+          success: true,
+          traceId: req.id,
+          data: user
+        });
+  } catch (err)
+  {
+    next( err)
+  } 
+ 
 }
 
 module.exports = {
