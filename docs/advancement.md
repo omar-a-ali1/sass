@@ -40,7 +40,7 @@ All 8 test suites pass (85 tests total):
 |---|---|---|
 | Auth (register, login, refresh, forgot/reset password, profile) | ✅ Complete | JWT access + refresh tokens |
 | JWT middleware (Bearer + cookie fallback) | ✅ Complete | `authenticate` + `authorize(role)` |
-| Auto-route loading | ✅ Complete | Directory hierarchy maps to URL paths |
+| Auto-route loading | ✅ Complete | Directory hierarchy maps to URL paths, folder name → Swagger tag |
 | Auto-model loading | ✅ Complete | Drop files in `models/` |
 | Auto-Swagger (dev only) | ✅ Complete | Joi → OpenAPI, zero prod imports |
 | Configurable middleware pipeline | ✅ Complete | Order in `MIDDLEWARE_PIPELINE` config |
@@ -91,19 +91,64 @@ controller → req.getService('xxxService') → service.list/get/create/update/d
 
 Controllers consistently use `res.respond(data)`, `res.paginated(result)`, `res.fail(message)`. The scaffold template (`cli/make.js`) was also updated to generate controllers with `res.respond` / `res.paginated` instead of the old `res.status().json({ success, traceId, data })` pattern.
 
+---
+
+## 5. Route Loading Overhaul
+
+### Directory → URL Mapping
+
+`loadRoutes.js` was rewritten to scan `routes/` from the root. The directory hierarchy maps directly to URL paths:
+
+```
+routes/api/v1/auth/login.js   →   POST /api/v1/auth/login
+routes/health/index.js        →   GET  /health/
+routes/api/v1/users/getUser.js →  GET  /api/v1/users/:id
+```
+
+The `ROUTE_PREFIX` config is no longer used — the URL is entirely determined by the directory structure.
+
+### Folder Name → Swagger Tag
+
+The immediate parent folder determines the Swagger tag, not the first URL segment:
+
+| File | Path | Tag (old — first URL segment) | Tag (new — parent folder) |
+|---|---|---|---|
+| `routes/api/v1/auth/login.js` | `/api/v1/auth/login` | `Api` | `Auth` |
+| `routes/api/v1/users/getUser.js` | `/api/v1/users/:id` | `Api` | `Users` |
+| `routes/health/index.js` | `/health/` | `Health` | `Health` |
+
+Tags can be overridden per-route by setting `docs.tags` in the route definition.
+
+### File Name Independence
+
+The filename is irrelevant to routing and Swagger — only the `module.exports` structure matters:
+
+```js
+// routes/anything.js — name doesn't matter
+module.exports = {
+  method: 'get',
+  path: '/my-path',          // path must be defined when filename ≠ path
+  middleware: [...],
+  handler: myHandler,
+  docs: { tags: ['Custom'] }, // optional tag override
+};
+```
+
+The `path` field in the export (defaults to `/${basename}` if omitted) and the directory location determine the full URL, not the file name.
+
 Upload routes use the two-step pipeline: `upload({ field })` → `[multer, persist]`:
   multer (memoryStorage) → storageStrategy.upload(key, buffer, mimetype) → req.uploadedFile
 ```
 
 ---
 
-## 5. Known Issues
+## 6. Known Issues
 
 - **No MongoDB in CI/local**: Health endpoint returns `503` when no DB connection exists. This is expected — the framework requires a running MongoDB instance for full functionality.
 - **Socket.IO in `server.js`**: Socket.IO is configured but no application-level socket events are defined beyond connect/disconnect logging. This is a placeholder for real-time features.
 - **Multer install**: The upload middleware lazily `require('multer')` — throws a clear error if the package is missing. The package is already listed in `package.json` dependencies.
 
-## 6. Seeder CLI
+## 7. Seeder CLI
 
 ```bash
 # Seed all (development environment)
@@ -134,7 +179,7 @@ module.exports = {
 ```
 ---
 
-## 7. Quick Start
+## 8. Quick Start
 ```bash
 cp .env.development.example .env.development
 npm install

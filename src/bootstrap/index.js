@@ -81,8 +81,6 @@ for (const key of MIDDLEWARE_PIPELINE) {
   if (mw) app.use(mw);
 }
 
-/** 6. Mount routes — auto-loaded from src/routes/ */
-app.get('/', (req, res) => res.json({ message: 'SASS work !' }));
 if (serveSwaggerUi && setupSwaggerUi) {
   app.use('/api-docs', serveSwaggerUi, setupSwaggerUi);
 }

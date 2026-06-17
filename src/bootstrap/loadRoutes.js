@@ -29,14 +29,17 @@ function collectRoutes(dir = routesDir, basePath = '') {
         (mw) => typeof mw === 'function' && mw._queryValidationSchema
       )?._queryValidationSchema || null;
 
+      const tag = path.basename(dir);
+
       routes.push({
         method: def.method.toLowerCase(),
-        path: `${basePath}${def.path || `/${path.basename(entry.name, '.js')}`}`,
+        path: `${basePath}${p}`,
         middleware,
         handler: def.handler,
         docs: def.docs || null,
         validationSchema,
         querySchema,
+        tag,
       });
     }
   }

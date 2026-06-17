@@ -103,14 +103,23 @@ function defaultResponses(route) {
 }
 
 /**
- * Derive a tag from the route path (first segment)
+ * Capitalize the first letter of a string
  *
- * @param {string} routePath
+ * @param {string} s
  * @returns {string}
  */
-function deriveTag(routePath) {
-  const segment = routePath.split('/').filter(Boolean)[0];
-  return segment ? segment.charAt(0).toUpperCase() + segment.slice(1) : 'Default';
+function capitalize(s) {
+  return s ? s.charAt(0).toUpperCase() + s.slice(1) : 'Default';
+}
+
+/**
+ * Derive a Swagger tag from the parent folder name
+ *
+ * @param {string} folderName
+ * @returns {string}
+ */
+function deriveTag(folderName) {
+  return capitalize(folderName);
 }
 
 /**
@@ -128,7 +137,7 @@ function generatePaths(options = {}) {
 
   for (const route of routes) {
     const openapiPath = route.path.replace(/:(\w+)/g, '{$1}');
-    const tag = deriveTag(route.path);
+    const tag = deriveTag(route.tag);
 
     if (!paths[openapiPath]) {
       paths[openapiPath] = {};
