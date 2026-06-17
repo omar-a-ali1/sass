@@ -13,6 +13,7 @@
 | [Architecture & Patterns](architecture-patterns.md) | Architectural design, 5 core patterns, end-to-end request lifecycle, dependency graph |
 | [CLI Reference](cli-reference.md) | All npm scripts (`make:*`, `routes`, `seed`) and Docker CLI commands |
 | [Infrastructure & DevOps](infrastructure.md) | Docker multi-stage build, Docker Compose, environment config, logging system, scripts |
+| [Building Routes](building-routes.md) | Junior vs professional approach, route file contract, full stack example |
 
 ## Quick Links
 
@@ -39,7 +40,7 @@
 - Strategy: MongoStrategy, PostgresStrategy, LocalStorageStrategy, S3StorageStrategy, ConsoleEmailStrategy, StubEmailStrategy
 - Per-route rate limiting: `createRateLimiter()` factory
 - Auto-model loading: drop a file in `src/models/`, it's registered + auto-converted to OpenAPI schema
-- Auto-route loading: drop `{ method, path, middleware, handler }` in `src/routes/api/v1/`, it's live
+- Auto-route loading: directory hierarchy maps to URL paths — drop a file, it's live
 - Auto-Swagger: Joi body schemas, query schemas, path params (`:id`), auth middleware all auto-detected
 - Dynamic routes via `path: '/:id'` export
 - Query validation via `validateQuery(joiSchema)`, auto-documented

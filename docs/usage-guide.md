@@ -117,7 +117,7 @@ This registers `GET /api/v1/ping/status` automatically — **zero manual wiring*
 | `users/getUser.js` | `users/` | `/:id` | `GET /api/v1/users/:id` |
 | `users/listUsers.js` | `users/` | `/` | `GET /api/v1/users` |
 
-The route prefix (`/api/v1` by default) is configurable via `ROUTE_PREFIX` env var. The auto-loader scans `routes/{ROUTE_PREFIX}/`.
+The auto-loader scans `routes/` from the root — the directory hierarchy determines the URL path. A file at `routes/api/v1/auth/login.js` becomes `POST /api/v1/auth/login`.
 
 ---
 
@@ -433,7 +433,7 @@ module.exports = {
 - `:id` in path → adds path `parameters`
 - Missing `responses` field → defaults to `400` + `500` refs
 
-The tag is derived from the first URL segment (`/auth/login` → `Auth`).
+The tag is derived from the immediate parent folder name. For example, a route at `routes/api/v1/auth/login.js` gets tag `Auth` (from the `auth/` folder). Tags can be overridden via `docs.tags` in the route definition.
 
 ---
 
@@ -529,9 +529,8 @@ Files are auto-discovered by `src/bootstrap/loadSeeders.js` — no manual regist
 ### Environment Variables
 
 | Variable | Default | Description |
-|---|---|---|
+|---|---|---|---|
 | `NODE_ENV` | `development` | Runtime environment |
-| `ROUTE_PREFIX` | `/api/v1` | API route prefix (folder + mount point) |
 | `PORT` | `3000` | HTTP server port |
 | `BODY_LIMIT` | `1mb` | Max JSON request body size |
 | `MONGO_URI` | `mongodb://localhost:27017/myapp_dev` | MongoDB connection string |
@@ -567,7 +566,7 @@ Edit `MIDDLEWARE_PIPELINE` in `src/config/system.js` to reorder or omit middlewa
 
 ---
 
-## 17. Scaffold Generator (CLI)
+## 18. Scaffold Generator (CLI)
 
 The framework provides Laravel-style `make:*` commands to scaffold individual artifacts or full resources:
 
@@ -611,13 +610,13 @@ After generating, the container auto-discovers the new repository and service fi
 
 ---
 
-## 18. Testing
+## 19. Testing
 
 Tests live in `src/tests/` and use Jest.
 
 ```bash
 npm test                          # local (85+ tests)
-./command/test.sh                 # Docker
+bash docker-cli/test.sh           # Docker
 ```
 
 **Key test files:**
@@ -635,7 +634,7 @@ npm test                          # local (85+ tests)
 
 ---
 
-## 19. Conventions Summary
+## 20. Conventions Summary
 
 | Concern | Location | Responsibility |
 |---|---|---|

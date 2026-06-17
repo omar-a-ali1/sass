@@ -46,8 +46,8 @@ if (config.env !== 'production') {
     openapi: '3.0.0',
     info: { ...SWAGGER_CONFIG },
     servers: [{
-      url: config.env.routePrefix ?? '/',
-       description: 'Local Development Server'
+      url: config.routePrefix || '/',
+      description: 'Local Development Server'
     }],
     paths: generatePaths(),
     components: require('../swagger/components'),

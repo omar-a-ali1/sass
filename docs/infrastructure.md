@@ -124,7 +124,7 @@ Missing any throws: `[CRITICAL CONFIG ERROR]: Missing environment variable [KEY]
 | Variable | Default | Description |
 |---|---|---|
 | `NODE_ENV` | `development` | Runtime environment |
-| `ROUTE_PREFIX` | `/api/v1` | API route prefix (folder + mount point) |
+| — | — | URL is determined by directory structure under `routes/` (no longer a config option) |
 | `PORT` | `3000` | HTTP server port |
 | `BODY_LIMIT` | `1mb` | Maximum JSON request body size |
 | `MONGO_URI` | `mongodb://localhost:27017/myapp_dev` | MongoDB connection string |

@@ -36,7 +36,7 @@
 - **CLI Scaffolding** — Laravel-style `npm run make:controller|route|service|repository|validation|model|seeder|all`
 - **Route Lister** — `npm run routes` — colour-coded methods, clickable links, middleware chain
 - **Configurable Middleware Pipeline** — Ordered middleware array in config, injected at bootstrap
-- **Configurable Route Prefix** — `ROUTE_PREFIX` env var + matching folder under `routes/`
+- **Auto-Discovery Routes** — Directory hierarchy maps to URL paths; drop a file, it's live
 - **Performance Monitoring** — In-memory metrics at `/health/metrics`
 - **Dynamic Routes** — Path params (`:id`) auto-detected in Swagger
 - **Per-Route Rate Limiting** — Configurable limits per endpoint via `createRateLimiter()` factory
@@ -244,7 +244,7 @@ docker compose up mongodb_test app_test
 
 | Config | Env Var | Default | Description |
 |---|---|---|---|
-| Route prefix | `ROUTE_PREFIX` | `/api/v1` | API mount point + scan directory |
+| Route directory | — | `routes/` | Directory hierarchy = URL path |
 | Port | `PORT` | `3000` | HTTP server port |
 | Body limit | `BODY_LIMIT` | `1mb` | Max request body size |
 | DB driver | `DB_DRIVER` | `mongo` | `mongo` or `postgres` |

@@ -135,7 +135,7 @@ Converts `:param` to `{param}` in OpenAPI path keys (e.g. `/users/:id` → `/use
 | Export | Type | Default | Description |
 |---|---|---|---|
 | `env` | `string` | `'development'` | Current NODE_ENV |
-| `routePrefix` | `string` | `'/api/v1'` | API route prefix |
+| `routePrefix` | `string` | `''` | Swagger server URL prefix (no longer used for route loading) |
 | `port` | `number` | `3000` | HTTP server port |
 | `bodyLimit` | `string` | `'1mb'` | Max JSON body size |
 | `database.uri` | `string` | `'mongodb://localhost:27017/myapp_dev'` | MongoDB URI |
@@ -557,4 +557,4 @@ The `cookie-parser` npm package is used to parse `Cookie` headers into `req.cook
 
 Total: **85+ tests** across multiple suites.
 
-Run: `npm test` (local) or `./command/test.sh` (Docker).
+Run: `npm test` (local) or `bash docker-cli/test.sh` (Docker).

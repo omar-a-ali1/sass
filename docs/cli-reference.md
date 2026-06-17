@@ -22,7 +22,7 @@ Generate files with the correct structure and container registration snippet pri
 |---|---|
 | `npm run make:all -- Product` | Everything below (controller, route, service, repository, validation, model) |
 | `npm run make:controller -- Product` | `src/controllers/product.controller.js` |
-| `npm run make:route -- Product` | `src/routes/api/v1/product.routes.js` |
+| `npm run make:route -- Product` | `src/routes/api/v1/product/{create,list,get,update,delete}.js` |
 | `npm run make:service -- Product` | `src/services/product.service.js` |
 | `npm run make:repository -- Product` | `src/repositories/product.repository.js` |
 | `npm run make:validation -- Product` | `src/validation/product.validation.js` |
