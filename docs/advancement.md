@@ -46,10 +46,18 @@ All 8 test suites pass (85 tests total):
 | Configurable middleware pipeline | ✅ Complete | Order in `MIDDLEWARE_PIPELINE` config |
 | Performance monitoring | ✅ Complete | `GET /health/metrics` endpoint |
 | Body size limit | ✅ Complete | Configurable via `BODY_LIMIT` env var |
+| URL-encoded body parsing | ✅ Complete | `express.urlencoded()` in pipeline |
 | Cookie parser | ✅ Complete | npm `cookie-parser` package |
 | Strategy pattern (DB, storage, email) | ✅ Complete | Driver-based config selection |
+| **Pagination (DB strategies)** | ✅ **New** | `MongoStrategy.paginate()`, `PostgresStrategy.paginate()` — skip/limit + total count |
+| **Response envelope** | ✅ **New** | `res.respond()`, `res.paginated()`, `res.fail()` — consistent JSON shape with `traceId` |
+| **File upload middleware** | ✅ **New** | Multer bridge → storage strategy (local/S3). Factory `upload({ field, maxSize })` returns middleware array |
+| **Seeder system** | ✅ **New** | Auto-discovers `*.seeder.js` in `src/seeders/`, runs via CLI (`npm run seed`) |
+| **Seeder scaffolding** | ✅ **New** | `npm run make:seeder -- Product` scaffold |
 | IoC container | ✅ Complete | DI via constructor injection |
-| Documentation | ✅ Complete | 6 doc files, README, advancement report |
+| CLI scaffolding | ✅ Complete | `npm run make:controller|route|service|repository|validation|model|seeder|all` |
+| Route lister | ✅ Complete | `npm run routes` — colour-coded methods, clickable URL, middleware chain |
+| Documentation | ✅ Complete | 7 doc files, README, advancement report |
 
 ---
 
@@ -61,11 +69,18 @@ server.js
        ├── loadModels.js           ← Auto-loads Mongoose models
        ├── services/container.js   ← IoC container (strategies → repos → services)
        ├── loadRoutes.js           ← Auto-builds Router from route files
-       └── loadSwagger.js          ← Auto-generates OpenAPI (dev only)
+       ├── loadSwagger.js          ← Auto-generates OpenAPI (dev only)
+       └── loadSeeders.js          ← Seeder runner (also used by CLI)
 
 MIDDLEWARE_PIPELINE (in order):
-  favicon → helmet → cors → cookieParser() → json(limit)
-  → rateLimiter → perfMonitor → tracer → injectServices → routes → errorHandler
+  favicon → helmet → cors → cookieParser() → json(limit) → urlencoded(extended)
+  → rateLimiter → perfMonitor → tracer → injectServices → responder
+  → routes → errorHandler
+
+Controllers now use `res.respond(data)`, `res.paginated(result)`, `res.fail(message)` instead of manual `res.status().json({ success, traceId, data })` boilerplate.
+
+Upload routes use the two-step pipeline: `upload({ field })` → `[multer, persist]`:
+  multer (memoryStorage) → storageStrategy.upload(key, buffer, mimetype) → req.uploadedFile
 ```
 
 ---
@@ -74,10 +89,53 @@ MIDDLEWARE_PIPELINE (in order):
 
 - **No MongoDB in CI/local**: Health endpoint returns `503` when no DB connection exists. This is expected — the framework requires a running MongoDB instance for full functionality.
 - **Socket.IO in `server.js`**: Socket.IO is configured but no application-level socket events are defined beyond connect/disconnect logging. This is a placeholder for real-time features.
+- **Multer install**: The upload middleware lazily `require('multer')` — throws a clear error if the package is missing. The package is already listed in `package.json` dependencies.
+
+## 6. What's Next (Medium Priority)
+
+| Gap | Why it matters |
+|---|---|
+| Event emitter / internal bus | Socket.IO is a placeholder; no decoupled event-driven logic |
+| CI/CD config (GitHub Actions) | Tests must be run manually |
+| PM2 `ecosystem.config.js` | No production process manager |
 
 ---
 
-## 6. Quick Start
+## 7. Seeder CLI
+
+```bash
+# Seed all (development environment)
+npm run seed
+
+# Drop + reseed
+npm run seed -- --clean
+
+# Seed only a specific model
+npm run seed -- --only user
+
+# Scaffold a new seeder
+npm run make:seeder -- Product
+```
+
+**Seeder definition format** (`src/seeders/<name>.seeder.js`):
+
+```js
+const { faker } = require('@faker-js/faker');
+
+module.exports = {
+  model: 'User',       // Mongoose model name
+  count: 10,           // Number of records
+  generate(i) {        // Called per record with index
+    return { name: faker.person.fullName() };
+  },
+};
+```
+
+---
+
+
+
+## 8. Quick Start
 
 ```bash
 cp .env.development.example .env.development

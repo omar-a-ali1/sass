@@ -51,6 +51,31 @@ class MongoStrategy {
   }
 
   /**
+   * Paginated find with total count
+   *
+   * @param {string}   model              - Model name
+   * @param {Object}   [query={}]         - MongoDB filter
+   * @param {Object}   [opts]             - Pagination options
+   * @param {number}   [opts.page=1]      - Page number (1-indexed)
+   * @param {number}   [opts.limit=20]    - Items per page
+   * @param {string}   [opts.sort='-createdAt'] - Sort expression
+   * @returns {Promise<{ data: Array, total: number, page: number, limit: number, totalPages: number }>}
+   */
+  async paginate(model, query = {}, opts = {}) {
+    const page = Math.max(1, opts.page || 1);
+    const limit = Math.min(100, Math.max(1, opts.limit || 20));
+    const sort = opts.sort || '-createdAt';
+    const skip = (page - 1) * limit;
+
+    const [data, total] = await Promise.all([
+      this._model(model).find(query).sort(sort).skip(skip).limit(limit).lean(),
+      this._model(model).countDocuments(query),
+    ]);
+
+    return { data, total, page, limit, totalPages: Math.ceil(total / limit) || 1 };
+  }
+
+  /**
    * Create a new document
    * @param {string} model - Model name
    * @param {Object} data - Document data
@@ -91,5 +116,6 @@ class MongoStrategy {
     return this._model(model).countDocuments(query);
   }
 }
+
 
 module.exports = MongoStrategy;

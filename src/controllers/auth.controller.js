@@ -26,11 +26,7 @@ const login = async (req, res, next) =>
     const authService = req.getService('authService');
     const credential = req.validatedBody;
     const data = await authService.loginUser(credential)
-    return res.status(201).json({
-      success: true,
-      traceId: req.id,
-      data
-    })
+    return res.respond(data, 201)
   } catch (err)
   {
     next(err)
@@ -55,11 +51,7 @@ const register = async (req, res, next) =>
     const authService = req.getService('authService');
     const credential = req.validatedBody;
     const user = await authService.registerUser(credential)
-    return res.status(201).json({
-      success: true,
-      traceId: req.id,
-      data: user
-    });
+    return res.respond(user, 201);
   } catch (err)
   {
     next(err)
@@ -84,11 +76,7 @@ const refresh = async (req, res, next) =>
     const authService = req.getService('authService');
     const { refreshToken } = req.validatedBody;
     const data = await authService.refreshToken(refreshToken);
-    return res.status(200).json({
-      success: true,
-      traceId: req.id,
-      data
-    });
+    return res.respond(data);
   } catch (err)
   {
     next(err)
@@ -114,11 +102,7 @@ const forgotPassword = async (req, res, next) =>
     const authService = req.getService('authService');
     const { email } = req.validatedBody;
     const data = await authService.forgotPassword(email);
-    return res.status(200).json({
-      success: true,
-      traceId: req.id,
-      data
-    });
+    return res.respond(data);
   } catch (err)
   {
     next(err)
@@ -142,11 +126,7 @@ const resetPassword = async (req, res, next) =>
     const authService = req.getService('authService');
     const { token, password } = req.validatedBody;
     const data = await authService.resetPassword(token, password);
-    return res.status(200).json({
-      success: true,
-      traceId: req.id,
-      data
-    });
+    return res.respond(data);
   } catch (err)
   {
     next(err)
@@ -170,11 +150,7 @@ const getProfile = async (req, res, next) =>
   try {
     const authService = req.getService('authService');
     const data = await authService.getProfile(req.user.id);
-    return res.status(200).json({
-      success: true,
-      traceId: req.id,
-      data
-    });
+    return res.respond(data);
   } catch (err)
   {
     next(err)

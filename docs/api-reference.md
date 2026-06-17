@@ -64,6 +64,8 @@
 | `cors` | `cors(corsOptions)` | CORS |
 | `cookieParser` | `cookie-parser()` | Parse `Cookie` header → `req.cookies` |
 | `json` | `express.json({ limit })` | Body parsing with configurable size limit |
+| `urlencoded` | `express.urlencoded({ extended, limit })` | Form body parsing |
+| `responder` | `middlewares/responder` | Attaches `res.respond()`, `res.paginated()`, `res.fail()` |
 | `rateLimiter` | `express-rate-limit` | Global rate limiter |
 | `perfMonitor` | `middlewares/perfMonitor` | Response time tracking, metrics collection |
 | `tracer` | `middlewares/tracer` | Request ID + Morgan HTTP logging |
@@ -79,6 +81,15 @@
 | `modelSchemas` | Object of OpenAPI schemas auto-generated from Mongoose models via `mongoose-to-swagger` |
 
 Scans `src/models/` for `.js` files, `require()`s each one. Each model's `mongoose.model()` call registers it globally.
+
+### `src/bootstrap/loadSeeders.js` — Seeder Auto-Loader
+
+| Export | Description |
+|---|---|
+| `run(options)` | Discovers `*.seeder.js` files in `src/seeders/`, runs each. `options.clean` drops collections first. `options.only` filters to a single seeder. |
+| `discoverSeeders(only)` | Returns `[{ name, def }]` for each seeder file. |
+
+Each seeder file exports `{ model, count, generate(i) }`. Ran automatically in dev via `server.js` after DB connect.
 
 ### `src/bootstrap/loadRoutes.js` — Route Auto-Loader
 
@@ -146,7 +157,7 @@ Converts `:param` to `{param}` in OpenAPI path keys (e.g. `/users/:id` → `/use
 #### `MIDDLEWARE_PIPELINE`
 Ordered array of middleware keys applied globally:
 ```js
-['favicon', 'helmet', 'cors', 'cookieParser', 'json', 'rateLimiter', 'perfMonitor', 'tracer', 'injectServices']
+['favicon', 'helmet', 'cors', 'cookieParser', 'json', 'urlencoded', 'rateLimiter', 'perfMonitor', 'tracer', 'injectServices', 'responder']
 ```
 
 #### `SWAGGER_CONFIG`
@@ -194,7 +205,7 @@ Ordered array of middleware keys applied globally:
 
 | Export | Description |
 |---|---|
-| `connectDB()` | Connects to MongoDB via `mongoose.connect()`. Exits process on failure. |
+| `connectDB()` | Connects to MongoDB via `mongoose.connect()`. Throws on failure (caller handles exit). |
 
 ---
 
@@ -284,6 +295,28 @@ Assigns `req.id` from `X-Request-ID` header or random UUID segment. Sets `X-Requ
 ### `src/middlewares/rateLimiter.js` — Per-Route Rate Limiter Factory
 
 `createRateLimiter(options)`: Factory creating Express rate-limit middleware. Options: `{ windowMs, max, message }`. Default: 1-minute window, 10 max.
+
+### `src/middlewares/responder.js` — Response Envelope
+
+Attaches convenience methods to `res`:
+
+| Method | Signature | Description |
+|---|---|---|
+| `res.respond` | `(data, statusCode = 200)` | `{ success, traceId, data }` |
+| `res.paginated` | `(paginatedResult, statusCode = 200)` | `{ success, traceId, data, meta: { total, page, limit, totalPages } }` |
+| `res.fail` | `(message, statusCode = 400)` | `{ success: false, traceId, error }` |
+
+### `src/middlewares/upload.js` — File Upload
+
+Factory that returns `[multerMiddleware, persistMiddleware]`:
+
+```js
+upload({ field, maxCount, maxSize, allowedMimes, prefix })
+```
+
+- Parses `multipart/form-data` via multer (memoryStorage)
+- Persists buffer via the registered `storageStrategy`
+- Sets `req.uploadedFile` (single) and `req.uploadedFiles` (array)
 
 ### `src/middlewares/perfMonitor.js` — Performance Monitoring
 
@@ -426,8 +459,8 @@ const EmailStrategy = { console: ConsoleEmailStrategy, stub: StubEmailStrategy }
 
 | Strategy | Status | Methods |
 |---|---|---|
-| `mongo.strategy.js` | **Full** | `create`, `findById`, `findOne`, `find`, `update`, `delete`, `count` |
-| `postgres.strategy.js` | **Full** | Same interface, lazy `pg.Pool`, parameterised queries |
+| `mongo.strategy.js` | **Full** | `create`, `findById`, `findOne`, `find`, `paginate`, `update`, `delete`, `count` |
+| `postgres.strategy.js` | **Full** | Same interface (+ `paginate`), lazy `pg.Pool`, parameterised queries |
 
 ### Storage Strategies
 

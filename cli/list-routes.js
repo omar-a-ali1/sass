@@ -37,13 +37,7 @@ for (const route of routes) {
 
   if (route.middleware.length > 0) {
     for (const mw of route.middleware) {
-      let label = mw.name || '';
-      if (mw._validationSchema) label = 'validate(body)';
-      else if (mw._queryValidationSchema) label = 'validateQuery';
-      else if (label === 'middleware') label = 'validate(body)';
-      else if (!label) {
-        label = mw.constructor.name === 'AsyncFunction' ? 'rateLimiter' : '(anonymous)';
-      }
+      const label = mw._label || mw.name || '(anonymous)';
       console.log(`  ${''.padEnd(11)}├─ ${colors.dim}${label}${colors.reset}`);
     }
   }

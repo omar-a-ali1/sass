@@ -26,7 +26,7 @@ const connectDB = async () => {
     logger.info('Database connection established successfully.');
   } catch (error) {
     logger.error(`Database connection failed: ${error.message}`, { stack: error.stack });
-    process.exit(1);
+    throw error;
   }
 };
 

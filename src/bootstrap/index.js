@@ -64,10 +64,12 @@ const middlewareMap = {
   cors: cors(corsOptions),
   cookieParser: require('cookie-parser')(),
   json: express.json({ limit: config.bodyLimit }),
+  urlencoded: express.urlencoded({ extended: true, limit: config.bodyLimit }),
   rateLimiter,
   perfMonitor: require('../middlewares/perfMonitor').perfMonitor,
   tracer: require('../middlewares/tracer'),
   injectServices: require('../middlewares/injectServices'),
+  responder: require('../middlewares/responder'),
 };
 
 /** Apply middleware in the order defined by config */

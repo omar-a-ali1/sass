@@ -15,12 +15,16 @@
     "make:validation": "node cli/make.js validation",
     "make:model": "node cli/make.js model",
     "make:all": "node cli/make.js all",
-    "routes": "node cli/list-routes.js"
+    "routes": "node cli/list-routes.js",
+    "seed": "node cli/seed.js",
+    "seed:clean": "node cli/seed.js --clean",
+    "make:seeder": "node cli/make.js seeder"
   },
   "author": "OMAR AIT ALI",
   "license": "MIT",
   "dependencies": {
     "bcrypt": "^6.0.0",
+    "body-parser": "^2.3.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "cross-env": "^10.1.0",
@@ -28,12 +32,14 @@
     "express": "^5.2.1",
     "express-rate-limit": "^8.5.2",
     "helmet": "^8.2.0",
+    "install": "^0.13.0",
     "joi": "^18.2.1",
     "joi-to-swagger": "^6.2.0",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.7.0",
     "mongoose-to-swagger": "^1.5.1",
     "morgan": "^1.11.0",
+    "multer": "^2.2.0",
     "path": "^0.12.7",
     "serve-favicon": "^2.5.1",
     "socket.io": "^4.8.3",
@@ -42,6 +48,7 @@
     "winston": "^3.19.0"
   },
   "devDependencies": {
+    "@faker-js/faker": "^10.4.0",
     "jest": "^30.4.2",
     "nodemon": "^3.1.14"
   }

@@ -38,6 +38,7 @@ const validate = (schema) => {
   };
 
   middleware._validationSchema = schema;
+  middleware._label = `validate(body)`;
   return middleware;
 };
 
@@ -67,6 +68,7 @@ const validateQuery = (schema) => {
   };
 
   middleware._queryValidationSchema = schema;
+  middleware._label = `validateQuery`;
   return middleware;
 };
 

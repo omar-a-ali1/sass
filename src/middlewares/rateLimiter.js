@@ -33,7 +33,7 @@ const createRateLimiter = (options = {}) => {
     legacyHeaders = false,
   } = options;
 
-  return rateLimit({
+  const mw = rateLimit({
     windowMs,
     max,
     message: { success: false, status: 'fail', error: { message } },
@@ -41,6 +41,9 @@ const createRateLimiter = (options = {}) => {
     legacyHeaders,
     validate: { xForwardedForHeader: false },
   });
+
+  mw._label = `rateLimiter({ max: ${max}, windowMs: ${windowMs} })`;
+  return mw;
 };
 
 module.exports = createRateLimiter;

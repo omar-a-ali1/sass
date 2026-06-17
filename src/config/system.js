@@ -16,10 +16,12 @@ const MIDDLEWARE_PIPELINE = [
   'cors',
   'cookieParser',
   'json',
+  'urlencoded',
   'rateLimiter',
   'perfMonitor',
   'tracer',
   'injectServices',
+  'responder',
 ];
 
 /**

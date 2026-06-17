@@ -14,13 +14,23 @@ const mockModel = {
   findById: jest.fn(),
   findByIdAndUpdate: jest.fn(),
   create: jest.fn(),
+  find: jest.fn(),
+  sort: jest.fn(),
+  skip: jest.fn(),
+  limit: jest.fn(),
   lean: jest.fn(),
+  countDocuments: jest.fn(),
 };
 
 mockModel.findOne.mockReturnValue(mockModel);
 mockModel.findById.mockReturnValue(mockModel);
 mockModel.findByIdAndUpdate.mockReturnValue(mockModel);
+mockModel.find.mockReturnValue(mockModel);
+mockModel.sort.mockReturnValue(mockModel);
+mockModel.skip.mockReturnValue(mockModel);
+mockModel.limit.mockReturnValue(mockModel);
 mockModel.lean.mockResolvedValue(null);
+mockModel.countDocuments.mockResolvedValue(0);
 
 function MockSchema(def) { this.def = def; }
 MockSchema.prototype.pre = function () { return this; };
@@ -103,14 +113,16 @@ describe('Dynamic Routes — /api/v1/users', () => {
   });
 
   it('GET /api/v1/users/ — supports query params with defaults', async () => {
+    mockModel.lean.mockResolvedValue([]);
+    mockModel.countDocuments.mockResolvedValue(0);
+
     const res = await request(app)
       .get('/api/v1/users/')
       .set('Authorization', `Bearer ${validToken}`);
 
     expect(res.status).toBe(200);
-    expect(res.body.data.params.page).toBe(1);
-    expect(res.body.data.params.limit).toBe(20);
-    expect(res.body.data.params.sort).toBe('desc');
+    expect(res.body.meta.page).toBe(1);
+    expect(res.body.meta.limit).toBe(20);
   });
 
   it('GET /api/v1/users/ — validates invalid query params', async () => {
@@ -123,14 +135,15 @@ describe('Dynamic Routes — /api/v1/users', () => {
   });
 
   it('GET /api/v1/users/ — passes custom query params', async () => {
+    mockModel.lean.mockResolvedValue([]);
+    mockModel.countDocuments.mockResolvedValue(0);
+
     const res = await request(app)
       .get('/api/v1/users/?page=3&limit=10&sort=asc&search=john')
       .set('Authorization', `Bearer ${validToken}`);
 
     expect(res.status).toBe(200);
-    expect(res.body.data.params.page).toBe(3);
-    expect(res.body.data.params.limit).toBe(10);
-    expect(res.body.data.params.sort).toBe('asc');
-    expect(res.body.data.params.search).toBe('john');
+    expect(res.body.meta.page).toBe(3);
+    expect(res.body.meta.limit).toBe(10);
   });
 });

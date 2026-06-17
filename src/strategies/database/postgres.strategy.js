@@ -158,6 +158,46 @@ class PostgresStrategy {
     const { rows } = await pool.query(text, values);
     return rows[0].count;
   }
+
+  /**
+   * Paginated find with total count
+   *
+   * @param {string}   model              - Model / table name
+   * @param {Object}   [query={}]         - Column filters
+   * @param {Object}   [opts]             - Pagination options
+   * @param {number}   [opts.page=1]      - Page number (1-indexed)
+   * @param {number}   [opts.limit=20]    - Items per page
+   * @param {string}   [opts.sort='id']   - Sort column (ASC assumed)
+   * @returns {Promise<{ data: Array, total: number, page: number, limit: number, totalPages: number }>}
+   */
+  async paginate(model, query = {}, opts = {}) {
+    const page = Math.max(1, opts.page || 1);
+    const limit = Math.min(100, Math.max(1, opts.limit || 20));
+    const sort = opts.sort || 'id';
+    const offset = (page - 1) * limit;
+
+    const pool = await this._getPool();
+    const { clause, values } = this._where(query);
+
+    const [dataResult, countResult] = await Promise.all([
+      pool.query(
+        `SELECT * FROM ${this._table(model)} ${clause} ORDER BY ${sort} ASC LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
+        [...values, limit, offset],
+      ),
+      pool.query(
+        `SELECT COUNT(*)::int AS count FROM ${this._table(model)} ${clause}`,
+        values,
+      ),
+    ]);
+
+    return {
+      data: dataResult.rows,
+      total: countResult.rows[0].count,
+      page,
+      limit,
+      totalPages: Math.ceil(countResult.rows[0].count / limit) || 1,
+    };
+  }
 }
 
 module.exports = PostgresStrategy;

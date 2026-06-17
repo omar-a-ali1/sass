@@ -21,9 +21,10 @@ A practical guide to adding new features, extending the framework, and following
 13. [Role-Based Authorization](#13-role-based-authorization)
 14. [Exposing in Swagger](#14-exposing-in-swagger)
 15. [Implementing a Strategy Backend](#15-implementing-a-strategy-backend)
-16. [Configuration Reference](#16-configuration-reference)
-17. [Testing](#17-testing)
-18. [Conventions Summary](#18-conventions-summary)
+16. [Database Seeders](#16-database-seeders)
+17. [Configuration Reference](#17-configuration-reference)
+18. [Testing](#18-testing)
+19. [Conventions Summary](#19-conventions-summary)
 
 ---
 
@@ -475,7 +476,55 @@ PostgresStrategy and S3StorageStrategy use **lazy `require()`** inside their met
 
 ---
 
-## 16. Configuration Reference
+## 16. Database Seeders
+
+Seeders populate your development database with realistic test data using `@faker-js/faker`.
+
+### CLI Commands
+
+```bash
+# Seed all models
+npm run seed
+
+# Drop existing data before seeding
+npm run seed -- --clean
+
+# Seed only a specific model
+npm run seed -- --only user
+
+# Scaffold a new seeder file
+npm run make:seeder -- Product
+```
+
+### Seeder Definition Format
+
+Create `src/seeders/<name>.seeder.js` exporting:
+
+```js
+const { faker } = require('@faker-js/faker');
+const bcrypt = require('bcrypt');
+
+module.exports = {
+  model: 'User',             // Mongoose model name (required)
+  count: 10,                 // Number of records to generate (default 10)
+  generate(i) {              // Called per record with index
+    return {
+      name: faker.person.fullName(),
+      email: faker.internet.email().toLowerCase(),
+      password: bcrypt.hashSync('password123', 10),
+      role: i === 0 ? 'admin' : 'user',
+    };
+  },
+};
+```
+
+Files are auto-discovered by `src/bootstrap/loadSeeders.js` — no manual registration needed.
+
+---
+
+
+
+## 17. Configuration Reference
 
 ### Environment Variables
 
@@ -586,7 +635,7 @@ npm test                          # local (85+ tests)
 
 ---
 
-## 18. Conventions Summary
+## 19. Conventions Summary
 
 | Concern | Location | Responsibility |
 |---|---|---|

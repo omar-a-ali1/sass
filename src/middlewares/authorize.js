@@ -23,7 +23,7 @@ const ForbiddenError = require('../errors/ForbiddenError');
 const authorize = (...roles) => {
   const flatRoles = roles.flat();
 
-  return (req, res, next) => {
+  const middleware = (req, res, next) => {
     if (!req.user) {
       return next(new ForbiddenError('Authentication required before role check'));
     }
@@ -34,6 +34,10 @@ const authorize = (...roles) => {
 
     next();
   };
+
+  middleware._roles = flatRoles;
+  middleware._label = `authorize([${flatRoles.map(r => `'${r}'`).join(', ')}])`;
+  return middleware;
 };
 
 module.exports = authorize;

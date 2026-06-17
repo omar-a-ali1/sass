@@ -18,9 +18,10 @@ if (!type || !rawName || process.argv.includes('--help')) {
     route        Generate CRUD route files
     service      Generate a service file
     repository   Generate a repository file
-    validation   Generate validation schema files
-    model        Generate a Mongoose model file
-    all          Generate everything (validation + model + repo + service + controller)
+  validation   Generate validation schema files
+  model        Generate a Mongoose model file
+  seeder       Generate a seeder file
+  all          Generate everything (validation + model + repo + service + controller)
 
   Examples:
     npm run make:controller -- Product
@@ -29,6 +30,7 @@ if (!type || !rawName || process.argv.includes('--help')) {
     npm run make:repository -- Product
     npm run make:validation -- Product
     npm run make:model -- Product
+    npm run make:seeder -- Product
     npm run make:all -- Product
   `);
   process.exit(0);
@@ -104,8 +106,28 @@ const schema = mongoose.Schema({
   name: { type: String, required: true },
 });
 
-module.exports = mongoose.model('${Pascal}', schema);
+  module.exports = mongoose.model('${Pascal}', schema);
 `);
+}
+
+function makeSeeder() {
+  write(path.join(ROOT, 'src', 'seeders', `${kebab}.seeder.js`), [
+    "const { faker } = require('@faker-js/faker');",
+    "const bcrypt = require('bcrypt');",
+    '',
+    'module.exports = {',
+    "  model: '" + Pascal + "',",
+    '  count: 10,',
+    '  generate(i) {',
+    '    return {',
+    "      name: faker.person.fullName(),",
+    "      email: faker.internet.email().toLowerCase(),",
+    "      password: bcrypt.hashSync('password123', 10),",
+    '    };',
+    '  },',
+    '};',
+    '',
+  ].join('\n'));
 }
 
 function makeRepository() {
@@ -347,6 +369,7 @@ const commands = {
   repository: makeRepository,
   validation: makeValidation,
   model: makeModel,
+  seeder: makeSeeder,
   all: makeAll,
 };
 
