@@ -8,7 +8,7 @@
  * @module middlewares/injectServices
  */
 
-const container = require("../services/container");
+const container = require("../bootstrap/loadContainer");
 
 /**
  * @param {Object}   req  - Express request object

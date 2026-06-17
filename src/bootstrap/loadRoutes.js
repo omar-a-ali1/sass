@@ -1,65 +1,30 @@
-/**
- * Route Auto-Loader
- *
- * Recursively scans a route directory and builds an Express router
- * from route definition files. Each file exports:
- *
- *   module.exports = {
- *     method,        // HTTP method (required)
- *     path,          // URL path relative to the dir (required)
- *     middleware[],  // Optional middleware
- *     handler,       // Route handler (required)
- *     docs           // Optional Swagger doc
- *   };
- *
- * @module bootstrap/loadRoutes
- */
-
 const fs = require('fs');
 const path = require('path');
 const express = require('express');
 
-/**
- * @typedef {Object} RouteDef
- * @property {string}   method
- * @property {string}   path
- * @property {Function[]} middleware
- * @property {Function} handler
- * @property {Object}   [docs]
- * @property {Object}   [validationSchema]
- */
+const routesDir = path.join(__dirname, '..', 'routes');
 
-/**
- * Recursively scan a directory and collect route definitions
- *
- * @param {string} dir      - Directory to scan
- * @param {string} basePath - Accumulated URL prefix
- * @returns {RouteDef[]}
- */
-function collectRoutes(dir, basePath = '') {
-  let routes = [];
-
+function collectRoutes(dir = routesDir, basePath = '') {
   const entries = fs.readdirSync(dir, { withFileTypes: true });
+  const routes = [];
 
   for (const entry of entries) {
     if (entry.name.startsWith('.')) continue;
-
     const fullPath = path.join(dir, entry.name);
 
     if (entry.isDirectory()) {
-      routes = routes.concat(collectRoutes(fullPath, `${basePath}/${entry.name}`));
+      routes.push(...collectRoutes(fullPath, `${basePath}/${entry.name}`));
     } else if (entry.isFile() && entry.name.endsWith('.js')) {
       const def = require(fullPath);
       if (!def || !def.method || !def.handler) continue;
+      const p = def.path || `/${path.basename(entry.name, '.js')}`;
 
       const middleware = Array.isArray(def.middleware) ? def.middleware : [];
 
-      /** Auto-detect Joi validation schema from middleware chain */
       const validationSchema = middleware.find(
         (mw) => typeof mw === 'function' && mw._validationSchema
       )?._validationSchema || null;
 
-      /** Auto-detect Joi query validation schema from middleware chain */
       const querySchema = middleware.find(
         (mw) => typeof mw === 'function' && mw._queryValidationSchema
       )?._queryValidationSchema || null;
@@ -79,30 +44,37 @@ function collectRoutes(dir, basePath = '') {
   return routes;
 }
 
-/**
- * Build an Express router from route definitions in the given directory
- *
- * @param {string} dir - Directory to scan
- * @returns {import('express').Router}
- */
-function buildRouter(dir) {
+function buildRouter(dir = routesDir) {
   const router = express.Router();
-  const routes = collectRoutes(dir);
+  const entries = fs.readdirSync(dir, { withFileTypes: true });
 
-  for (const route of routes) {
-    if (typeof router[route.method] === 'function') {
-      router[route.method](route.path, ...route.middleware, route.handler);
+  for (const entry of entries) {
+    if (entry.name.startsWith('.')) continue;
+    const fullPath = path.join(dir, entry.name);
+
+    if (entry.isDirectory()) {
+      const subRouter = buildRouter(fullPath);
+      router.use(`/${entry.name}`, subRouter);
+    } else if (entry.isFile() && entry.name.endsWith('.js')) {
+      const def = require(fullPath);
+      if (!def) continue;
+
+      if (def.method && def.handler) {
+        const p = def.path || `/${path.basename(entry.name, '.js')}`;
+        const middleware = Array.isArray(def.middleware) ? def.middleware : [];
+        if (typeof router[def.method.toLowerCase()] === 'function') {
+          router[def.method.toLowerCase()](p, ...middleware, def.handler);
+        }
+      } else if (typeof def === 'function' || (def.stack || def.use)) {
+        const mountPath = `/${path.basename(entry.name, '.js')}`;
+        router.use(mountPath, def);
+      }
     }
   }
 
   return router;
 }
 
-const env = require('../config/environment');
+const Router = buildRouter();
 
-const routesDir = path.join(__dirname, '..', 'routes', env.routePrefix.replace(/^\//, ''));
-
-/** Pre-built  router — auto-loaded at import time */
-const Router = buildRouter(routesDir);
-
-module.exports = { collectRoutes, buildRouter, Router, routePrefix: env.routePrefix };
+module.exports = { collectRoutes, buildRouter, Router, routePrefix: '' };

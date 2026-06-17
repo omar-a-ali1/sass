@@ -10,10 +10,10 @@
 class SecurityService {
   /**
    * @param {Object}   deps
-   * @param {Object}   deps.secRepository - SecurityRepository instance
+   * @param {Object}   deps.securityRepository - SecurityRepository instance
    */
-  constructor({ secRepository }) {
-    this.secRepository = secRepository;
+  constructor({ securityRepository }) {
+    this.securityRepository = securityRepository;
   }
 
   /**
@@ -23,7 +23,7 @@ class SecurityService {
    * @returns {Promise<string>} Bcrypt-hashed password string
    */
   async hashPassword(password) {
-    return await this.secRepository.hash(password)
+    return await this.securityRepository.hash(password)
   }
 
   /**
@@ -34,7 +34,7 @@ class SecurityService {
    * @returns {Promise<boolean>} True if passwords match
    */
   async comparePassword(providedPassword, hashedPassword) {
-    return await this.secRepository.comparePassword(providedPassword, hashedPassword)
+    return await this.securityRepository.comparePassword(providedPassword, hashedPassword)
   }
 
   /**
@@ -50,7 +50,7 @@ class SecurityService {
    */
   generateAuthToken(user) {
     const payload = { id: user._id, email: user.email, role: user.role || 'user' };
-    return this.secRepository.assignJwt(payload);
+    return this.securityRepository.assignJwt(payload);
   }
 
   /**
@@ -65,7 +65,7 @@ class SecurityService {
    */
   generateRefreshToken(user) {
     const payload = { id: user._id, email: user.email, role: user.role || 'user' };
-    return this.secRepository.assignRefreshJwt(payload);
+    return this.securityRepository.assignRefreshJwt(payload);
   }
 
   /**
@@ -78,7 +78,7 @@ class SecurityService {
    */
   generateResetToken(user) {
     const payload = { id: user._id, email: user.email };
-    return this.secRepository.assignResetJwt(payload);
+    return this.securityRepository.assignResetJwt(payload);
   }
 
   /**

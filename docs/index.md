@@ -21,7 +21,7 @@
 - **Route Auto-Loader**: [`src/bootstrap/loadRoutes.js`](../src/bootstrap/loadRoutes.js)
 - **Swagger Auto-Generator**: [`src/bootstrap/loadSwagger.js`](../src/bootstrap/loadSwagger.js)
 - **Model Auto-Loader**: [`src/bootstrap/loadModels.js`](../src/bootstrap/loadModels.js)
-- **IoC Container**: [`src/services/container.js`](../src/services/container.js)
+- **IoC Container**: [`src/bootstrap/container.js`](../src/bootstrap/container.js) (auto-discovered by [`src/bootstrap/loadContainer.js`](../src/bootstrap/loadContainer.js))
 - **Auth Middleware**: [`src/middlewares/auth.js`](../src/middlewares/auth.js)
 - **Authorize Middleware**: [`src/middlewares/authorize.js`](../src/middlewares/authorize.js)
 - **Rate Limiter Factory**: [`src/middlewares/rateLimiter.js`](../src/middlewares/rateLimiter.js)

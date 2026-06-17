@@ -40,7 +40,7 @@ All 8 test suites pass (85 tests total):
 |---|---|---|
 | Auth (register, login, refresh, forgot/reset password, profile) | ✅ Complete | JWT access + refresh tokens |
 | JWT middleware (Bearer + cookie fallback) | ✅ Complete | `authenticate` + `authorize(role)` |
-| Auto-route loading | ✅ Complete | Drop files in `routes/api/v1/` |
+| Auto-route loading | ✅ Complete | Directory hierarchy maps to URL paths |
 | Auto-model loading | ✅ Complete | Drop files in `models/` |
 | Auto-Swagger (dev only) | ✅ Complete | Joi → OpenAPI, zero prod imports |
 | Configurable middleware pipeline | ✅ Complete | Order in `MIDDLEWARE_PIPELINE` config |
@@ -70,7 +70,7 @@ All 8 test suites pass (85 tests total):
 server.js                       ← Developer entry point (customisable)
   └── bootstrap/index.js          ← Express app assembly
        ├── loadModels.js           ← Auto-loads Mongoose models
-       ├── services/container.js   ← IoC container (strategies → repos → services)
+       ├── loadContainer.js        ← IoC container (auto-discovers repos & services)
        ├── loadRoutes.js           ← Auto-builds Router from route files
        ├── loadSwagger.js          ← Auto-generates OpenAPI (dev only)
        └── loadSeeders.js          ← Seeder runner (also used by CLI)
@@ -80,7 +80,16 @@ MIDDLEWARE_PIPELINE (in order):
   → rateLimiter → perfMonitor → tracer → injectServices → responder
   → routes → errorHandler
 
-Controllers now use `res.respond(data)`, `res.paginated(result)`, `res.fail(message)` instead of manual `res.status().json({ success, traceId, data })` boilerplate.
+All controllers follow **Controller → Service → Repository → Strategy** chain:
+
+```
+controller → req.getService('xxxService') → service.list/get/create/update/delete
+                                         → repository → dbStrategy
+```
+
+`user.controller.js` was rebuilt to follow this pattern: `getUser` and `listUsers` now call `userService` instead of directly accessing `authService` or `dbStrategy`. The new `UserService` encapsulates search logic (`$or` / `$regex` transformation), and `UserRepository` gained a `paginate()` method that delegates to `dbStrategy.paginate()`.
+
+Controllers consistently use `res.respond(data)`, `res.paginated(result)`, `res.fail(message)`. The scaffold template (`cli/make.js`) was also updated to generate controllers with `res.respond` / `res.paginated` instead of the old `res.status().json({ success, traceId, data })` pattern.
 
 Upload routes use the two-step pipeline: `upload({ field })` → `[multer, persist]`:
   multer (memoryStorage) → storageStrategy.upload(key, buffer, mimetype) → req.uploadedFile

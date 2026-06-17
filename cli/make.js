@@ -205,7 +205,7 @@ function makeController() {
   try {
     const ${camel}Service = req.getService('${camel}Service');
     const data = await ${camel}Service.list(req.validatedQuery);
-    return res.status(200).json({ success: true, traceId: req.id, data });
+    return res.paginated(data);
   } catch (err) { next(err); }
 };
 
@@ -213,7 +213,7 @@ const get = async (req, res, next) => {
   try {
     const ${camel}Service = req.getService('${camel}Service');
     const data = await ${camel}Service.get(req.params.id);
-    return res.status(200).json({ success: true, traceId: req.id, data });
+    return res.respond(data);
   } catch (err) { next(err); }
 };
 
@@ -221,7 +221,7 @@ const create = async (req, res, next) => {
   try {
     const ${camel}Service = req.getService('${camel}Service');
     const data = await ${camel}Service.create(req.validatedBody);
-    return res.status(201).json({ success: true, traceId: req.id, data });
+    return res.respond(data, 201);
   } catch (err) { next(err); }
 };
 
@@ -229,7 +229,7 @@ const update = async (req, res, next) => {
   try {
     const ${camel}Service = req.getService('${camel}Service');
     const data = await ${camel}Service.update(req.params.id, req.validatedBody);
-    return res.status(200).json({ success: true, traceId: req.id, data });
+    return res.respond(data);
   } catch (err) { next(err); }
 };
 
@@ -237,7 +237,7 @@ const destroy = async (req, res, next) => {
   try {
     const ${camel}Service = req.getService('${camel}Service');
     await ${camel}Service.delete(req.params.id);
-    return res.status(204).end();
+    return res.respond(null, 204);
   } catch (err) { next(err); }
 };
 

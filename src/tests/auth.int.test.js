@@ -45,7 +45,7 @@ describe('Auth Integration', () => {
   beforeAll(async () => {
     mockUserDoc.password = await bcrypt.hash('password123', 12);
     app = require('../app');
-    const container = require('../services/container');
+    const container = require('../bootstrap/loadContainer');
     securityRepo = container.get('securityRepository');
   });
 

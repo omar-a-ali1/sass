@@ -9,7 +9,7 @@
 
 const j2s = require('joi-to-swagger');
 const path = require('path');
-const { collectRoutes, routePrefix } = require('./loadRoutes');
+const { collectRoutes } = require('./loadRoutes');
 
 /**
  * Build an OpenAPI requestBody from a Joi schema
@@ -122,7 +122,7 @@ function deriveTag(routePath) {
  * @returns {Object} OpenAPI paths object
  */
 function generatePaths(options = {}) {
-  const routesDir = options.routesDir || path.join(__dirname, '..', 'routes', routePrefix.replace(/^\//, ''));
+  const routesDir = options.routesDir || path.join(__dirname, '..', 'routes');
   const routes = collectRoutes(routesDir);
   const paths = { ...(options.manualPaths || {}) };
 

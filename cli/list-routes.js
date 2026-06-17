@@ -1,11 +1,10 @@
 #!/usr/bin/env node
 
 const path = require('path');
-const { collectRoutes, routePrefix } = require('../src/bootstrap/loadRoutes');
+const { collectRoutes } = require('../src/bootstrap/loadRoutes');
 const config = require('../src/config/environment');
 
-const routesDir = path.join(__dirname, '..', 'src', 'routes', routePrefix.replace(/^\//, ''));
-const routes = collectRoutes(routesDir);
+const routes = collectRoutes();
 
 const colors = {
   GET:     '\x1b[32m',
@@ -27,13 +26,12 @@ console.log(`\n  \x1b[1mRegistered Routes (${routes.length} total)\x1b[0m    ${c
 for (const route of routes) {
   const method = route.method.toUpperCase();
   const color = colors[method] || colors.ANY;
-  const fullPath = routePrefix + route.path;
-  const url = `${base}${fullPath}`;
+  const url = `${base}${route.path}`;
   const mwCount = route.middleware.length;
   const mwStr = mwCount > 0 ? `${mwCount} middleware` : '—';
 
   console.log(`  ${color}${method.padEnd(7)}${colors.reset} ${colors.cyan}${url}${colors.reset}`);
-  console.log(`  ${''.padEnd(9)}${colors.dim}${fullPath}${colors.reset}  ${colors.dim}${mwStr}${colors.reset}`);
+  console.log(`  ${''.padEnd(9)}${colors.dim}${route.path}${colors.reset}  ${colors.dim}${mwStr}${colors.reset}`);
 
   if (route.middleware.length > 0) {
     for (const mw of route.middleware) {
@@ -44,16 +42,13 @@ for (const route of routes) {
   console.log();
 }
 
-console.log(`  \x1b[1mStatic mounts\x1b[0m\n`);
-const staticRoutes = [
-  ['GET', '/', ''],
-  ['GET', '/health', ''],
-  ['GET', '/api-docs', '(Swagger UI, dev only)'],
-  ['ANY', '/*', '(404 fallback)'],
+const staticNotes = [
+  'GET  /          SASS work !',
+  'GET  /api-docs  (Swagger UI, dev only)',
+  'ANY  /*         (404 fallback)',
 ];
-for (const [method, p, note] of staticRoutes) {
-  const color = colors[method] || colors.ANY;
-  const url = `${base}${p}`;
-  console.log(`  ${color}${method.padEnd(7)}${colors.reset} ${colors.cyan}${url}${colors.reset} ${colors.dim}${note}${colors.reset}`);
+console.log(`  \x1b[1mStatic mounts\x1b[0m\n`);
+for (const note of staticNotes) {
+  console.log(`  ${colors.dim}${note}${colors.reset}`);
 }
 console.log();

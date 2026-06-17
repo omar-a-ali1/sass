@@ -23,9 +23,21 @@ class UserRepository
    * @async
    * @returns {Promise<Array>} Array of all user documents
    */
-  async findAll()
+  async findAll(query = {})
   {
-    return await this.db.find('User');
+    return await this.db.find('User', query);
+  }
+
+  /**
+   * Paginated find with total count
+   * @async
+   * @param {Object}   query   - MongoDB filter
+   * @param {Object}   opts    - Pagination options (page, limit, sort)
+   * @returns {Promise<{ data: Array, total: number, page: number, limit: number, totalPages: number }>}
+   */
+  async paginate(query = {}, opts = {})
+  {
+    return await this.db.paginate('User', query, opts);
   }
 
   /**

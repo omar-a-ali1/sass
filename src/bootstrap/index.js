@@ -28,10 +28,10 @@ const logger = require('../utils/logger');
 require('./loadModels');
 
 /** 2. Initialize IoC container (strategies, repos, services) */
-const container = require('../services/container');
+const container = require('./loadContainer');
 
 /** 3. Build API router from auto-scanned route files */
-const { Router, routePrefix } = require('./loadRoutes');
+const { Router } = require('./loadRoutes');
 
 /** 4. Generate Swagger paths from route definitions (non-production only) */
 let swaggerDoc = null;
@@ -45,7 +45,10 @@ if (config.env !== 'production') {
   swaggerDoc = {
     openapi: '3.0.0',
     info: { ...SWAGGER_CONFIG },
-    servers: [{ url: routePrefix, description: 'Local Development Server' }],
+    servers: [{
+      url: config.env.routePrefix ?? '/',
+       description: 'Local Development Server'
+    }],
     paths: generatePaths(),
     components: require('../swagger/components'),
   };
@@ -78,17 +81,13 @@ for (const key of MIDDLEWARE_PIPELINE) {
   if (mw) app.use(mw);
 }
 
-/** 6. Mount routes */
-const healthRoutes = require('../routes/health');
-const fallback = require('../routes/defaults/fallback');
-
+/** 6. Mount routes — auto-loaded from src/routes/ */
 app.get('/', (req, res) => res.json({ message: 'SASS work !' }));
 if (serveSwaggerUi && setupSwaggerUi) {
   app.use('/api-docs', serveSwaggerUi, setupSwaggerUi);
 }
-app.use('/health', healthRoutes);
-app.use(routePrefix, Router);
-app.use(fallback);
+app.use(Router);
+app.use(require('../middlewares/fallback'));
 
 /** 7. Global error handler */
 app.use(require('../middlewares/errorHandler'));

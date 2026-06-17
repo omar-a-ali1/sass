@@ -32,7 +32,7 @@ module.exports = {
   env: envType,
 
   /** API route prefix — folder under routes/ to scan and mount point */
-  routePrefix: process.env.ROUTE_PREFIX || '/api/v1',
+  routePrefix: process.env.ROUTE_PREFIX || '',
   /** HTTP server port */
   port: parseInt(process.env.PORT, 10) || 3000,
 

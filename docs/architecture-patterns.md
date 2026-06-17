@@ -22,7 +22,7 @@
 │  │  MIDDLEWARE_PIPELINE (ordered by config)              │   │
 │  │  favicon → helmet → cors → cookieParser              │   │
 │  │  → json(limit) → rateLimiter → perfMonitor           │   │
-│  │  → tracer → injectServices → ROUTES → fallback       │   │
+│  │  → tracer → injectServices → ROUTES → fallback        │   │
 │  │  → errorHandler                                       │   │
 │  └──────────────────────────────────────────────────────┘   │
 └──────────────────────┬─────────────────────────────────────┘
@@ -90,7 +90,7 @@ All auto-loading logic lives in `bootstrap/`. The orchestrator (`index.js`) runs
 
 1. **`loadModels.js`** — Scans `src/models/`, `require()`s each file, registers Mongoose models, converts each to OpenAPI schema via `mongoose-to-swagger`
 2. **`container.js`** — Initializes the IoC container with driver-selected strategies
-3. **`loadRoutes.js`** — Recursively scans `routes/{routePrefix}/`, builds an Express Router from `{ method, path, middleware, handler }` exports
+3. **`loadRoutes.js`** — Scans `routes/` root, maps directory hierarchy to URL paths, builds an Express Router from `{ method, path, middleware, handler }` exports
 4. **`loadSwagger.js`** — Reads each route's `docs` + auto-detected Joi schemas + middleware + path params → generates OpenAPI 3.0 paths
 
 ### Route Auto-Discovery Convention
@@ -128,9 +128,9 @@ In `bootstrap/index.js`, each key is looked up in `middlewareMap` and applied vi
 
 ## Pattern 3: Dependency Injection / IoC Container
 
-**File**: `src/services/container.js`
+**File**: `src/bootstrap/container.js` (class) + `src/bootstrap/loadContainer.js` (orchestrator)
 
-Centralized service resolution with a Map-based container.
+Centralized service resolution with a Map-based container. The orchestrator auto-discovers repositories (`src/repositories/*.repository.js`) and services (`src/services/*Service.js`) using constructor parameter name matching with multi-pass dependency resolution.
 
 ```js
 class DependencyContainer {
@@ -296,7 +296,7 @@ Error
 server.js
   ├── src/bootstrap/index.js
   │   ├── loadModels.js ──── models/User.js (via mongoose-to-swagger → OpenAPI schemas)
-  │   ├── services/container.js
+   │   ├── loadContainer.js (auto-discovers repos + services)
   │   │   ├── strategies/database/mongo.strategy.js (or postgres — config-driven)
   │   │   ├── strategies/storage/localStorage.strategy.js (or s3 — config-driven)
   │   │   ├── strategies/email/consoleEmail.strategy.js (or stub — config-driven)

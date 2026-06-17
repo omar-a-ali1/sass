@@ -71,7 +71,7 @@
 | `tracer` | `middlewares/tracer` | Request ID + Morgan HTTP logging |
 | `injectServices` | `middlewares/injectServices` | Attaches IoC container to `req` |
 
-**Route mounts**: `/` (welcome), `/api-docs` (Swagger UI), `/health`, `routePrefix` (API), fallback (404).
+**Route mounts**: `/` (welcome), `/api-docs` (Swagger UI), `/health/**` (auto-loaded), `/api/*` (auto-loaded), fallback (404), errorHandler.
 
 ### `src/bootstrap/loadModels.js` — Model Auto-Loader
 
@@ -95,10 +95,9 @@ Each seeder file exports `{ model, count, generate(i) }`. Ran automatically in d
 
 | Export | Description |
 |---|---|
-| `collectRoutes(dir, basePath)` | Recursively scans directory, collects route definitions into an array |
+| `collectRoutes(dir)` | Recursively scans directory, collects route definitions into an array |
 | `buildRouter(dir)` | Calls `collectRoutes` and registers each definition on an Express Router |
 | `Router` | Pre-built router (auto-loaded at import time) |
-| `routePrefix` | Resolved from config (`ROUTE_PREFIX` env var, default `/api/v1`) |
 
 **Route definition discovery**: Each file must export `{ method, path, middleware, handler }`. The loader:
 - Reads the directory path as the URL base
@@ -106,7 +105,7 @@ Each seeder file exports `{ model, count, generate(i) }`. Ran automatically in d
 - Supports `:id` style path params
 - Auto-detects `_validationSchema` (body) and `_queryValidationSchema` (query) on middleware
 
-Scan dir: `routes/{routePrefix}` — mirrors the mount point.
+Scan dir: `routes/` root — directory hierarchy maps to URL path (e.g. `routes/api/v1/auth/login.js` → `POST /api/v1/auth/login`).
 
 ### `src/bootstrap/loadSwagger.js` — Swagger Auto-Generator
 
@@ -232,8 +231,8 @@ Ordered array of middleware keys applied globally:
 
 | Function | Route | Description |
 |---|---|---|
-| `getUser` | `GET /users/:id` | `req.params.id` → `userService.getProfile()` |
-| `listUsers` | `GET /users` | `req.validatedQuery` → `userService.listUsers()` |
+| `getUser` | `GET /users/:id` | `req.params.id` → `userService.get(id)` |
+| `listUsers` | `GET /users` | `req.validatedQuery` → `userService.list(query)` |
 
 ---
 
@@ -353,9 +352,12 @@ upload({ field, maxCount, maxSize, allowedMimes, prefix })
 
 | Method | Description |
 |---|---|
+| `findAll(query)` | `dbStrategy.find('User', query)` |
 | `findById(id)` | `dbStrategy.findById('User', id)` |
 | `findByEmail(email)` | `dbStrategy.findOne('User', { email })` |
 | `create(userData)` | `dbStrategy.create('User', userData)` |
+| `updateById(id, data)` | `dbStrategy.findByIdAndUpdate('User', id, data)` |
+| `paginate(query, opts)` | `dbStrategy.paginate('User', query, opts)` — supports page, limit, sort |
 
 Receives `{ dbStrategy }` via constructor injection.
 
@@ -384,6 +386,9 @@ Receives `{ dbStrategy }` via constructor injection.
 
 ```
 routes/
+  ├── health/
+  │   ├── index.js              GET     /
+  │   └── metrics.js            GET     /metrics
   └── api/v1/
       ├── auth/
       │   ├── login.js             POST    /login
@@ -397,37 +402,39 @@ routes/
           └── listUsers.js         GET     /
 ```
 
-Each file exports `{ method, path, middleware, handler }`. The bootstrap auto-loader handles registration.
+Each file exports `{ method, path, middleware, handler }`. The bootstrap auto-loader recursively scans `routes/` and maps directory hierarchy to URL paths (e.g. `routes/api/v1/auth/login.js` → `POST /api/v1/auth/login`).
 
-### `src/routes/health.js`
+### `src/middlewares/fallback.js`
 
-| Method | Path | Description |
-|---|---|---|
-| `GET` | `/health` | System health (DB status, uptime, memory) |
-| `GET` | `/health/metrics` | Performance metrics snapshot |
-
-### `src/routes/defaults/fallback.js`
-
-404 catch-all — passes `NotFoundError('route not found [${url}]')`.
+404 catch-all — passes `NotFoundError('route not found [${url}]')`. Mounted after all routes but before errorHandler.
 
 ---
 
 ## 10. Services
 
-### `src/services/container.js` — IoC Dependency Container
+### IoC Container
 
-**`DependencyContainer`** class:
-| Method | Description |
-|---|---|
-| `register(name, instance)` | Stores instance by name |
-| `get(name)` | Retrieves instance. Throws if not found. |
+The container lives in `src/bootstrap/` and is auto-wired:
 
-**Registration order**: Strategies → Repositories → Services. Uses **driver-based selection**:
+- **Class**: `src/bootstrap/container.js` — `DependencyContainer` (`register`, `get`, `has`)
+- **Orchestrator**: `src/bootstrap/loadContainer.js` — auto-discovers and registers everything
+
+**Registration order**: Strategies (manual) → Repositories (auto) → Services (auto with multi-pass dep resolution).
+
+**Strategies** are manually registered from config-driven driver map:
 ```js
 const DBStrategy = { mongo: MongoStrategy, postgres: PostgresStrategy }[config.database.driver];
 const StorageStrategy = { local: LocalStorageStrategy, s3: S3StorageStrategy }[config.storage.driver];
 const EmailStrategy = { console: ConsoleEmailStrategy, stub: StubEmailStrategy }[config.email.driver];
 ```
+
+**Repositories** (`src/repositories/*.repository.js`) are auto-discovered — constructor parameter names are matched to registered strategies.
+
+**Services** (`src/services/*Service.js`) are auto-discovered with multi-pass dependency resolution — if `AuthService` needs `securityService` but `SecurityService` isn't registered yet, the resolver retries until all deps are satisfied or no more progress can be made.
+
+**Registered services**: `dbStrategy`, `storageStrategy`, `emailStrategy`, `securityRepository`, `userRepository`, `securityService`, `userService`, `authService`.
+
+To add a new repository or service, just drop the file in the correct directory — the container picks it up automatically.
 
 ### `src/services/authService.js`
 
@@ -439,6 +446,13 @@ const EmailStrategy = { console: ConsoleEmailStrategy, stub: StubEmailStrategy }
 | `forgotPassword(email)` | Generates reset JWT, sends email via `emailStrategy`. |
 | `resetPassword(token, password)` | Verifies reset JWT, hashes + stores new password. |
 | `getProfile(userId)` | Returns user or `NotFoundError`. |
+
+### `src/services/userService.js`
+
+| Method | Description |
+|---|---|
+| `get(id)` | Returns user or `NotFoundError`. Sanitises output (strips password). |
+| `list(query)` | Extracts `{ page, limit, sort, search }`, builds `$or` filter for search, delegates to `userRepository.paginate()`. |
 
 ### `src/services/securityService.js`
 
