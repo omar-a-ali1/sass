@@ -1,16 +1,16 @@
 /**
- * API Version 1 Router
+ * API Version 1 Router — Auto-Loader
  *
- * Mounts all v1 endpoint groups under `/api/v1`.
- * Currently serves auth routes (register, login).
+ * Recursively scans `src/routes/v1/` and builds an Express router
+ * from folder-based route definition files.
+ *
+ * Convention:
+ *   src/routes/v1/auth/login.js → exports { method, path, middleware, handler }
+ *                                 → POST /auth/login
  *
  * @module routes/v1/index
  */
 
-const router = require('express').Router()
-const authRoutes = require('./auth')
+const { buildRouter } = require('./loader');
 
-/** Authentication endpoints */
-router.use('/auth', authRoutes)
-
-module.exports = router
+module.exports = buildRouter(__dirname);

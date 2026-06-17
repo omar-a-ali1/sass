@@ -21,6 +21,7 @@
 - **Database Strategy**: [`src/strategies/database/mongo.strategy.js`](../src/strategies/database/mongo.strategy.js)
 - **Storage Strategy**: [`src/strategies/storage/localStorage.strategy.js`](../src/strategies/storage/localStorage.strategy.js)
 - **Model Auto-Loader**: [`src/models/index.js`](../src/models/index.js)
+- **Route Loader**: [`src/routes/v1/loader.js`](../src/routes/v1/loader.js)
 - **Error Base**: [`src/errors/appErrors.js`](../src/errors/appErrors.js)
 - **Logger**: [`src/utils/logger.js`](../src/utils/logger.js)
 

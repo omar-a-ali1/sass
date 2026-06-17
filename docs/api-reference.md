@@ -333,19 +333,31 @@ Used by `authService.registerUser()` and `authService.loginUser()` to strip sens
 |---|---|
 | Fallback middleware | Catches all unmatched routes, passes `NotFoundError('route not found [${req.originalUrl}]')` to next middleware |
 
-### `src/routes/v1/index.js` — v1 Aggregator
+### `src/routes/v1/index.js` — v1 Aggregator (Auto-Loader)
 
-| Mount | Description |
+Recursively scans `src/routes/v1/` using `loader.js` and builds a router from folder-based route definition files. Each route file exports:
+
+| Key | Required | Description |
+|---|---|---|
+| `method` | Yes | HTTP method (`get`, `post`, `put`, `delete`, `patch`) |
+| `path` | Yes | URL path relative to the directory |
+| `middleware` | No | Array of Express middleware functions |
+| `handler` | Yes | Route handler function |
+
+### `src/routes/v1/loader.js` — Recursive Route Scanner
+
+| Export | Description |
 |---|---|
-| `/auth` | Auth routes |
+| `collectRoutes(dir, basePath)` | Recursively scans directory, collects all route definitions into an array. Skips `index.js`, `loader.js`, and dotfiles. |
+| `buildRouter(dir)` | Calls `collectRoutes` and registers each definition on an Express router. Returns the assembled router. |
 
-### `src/routes/v1/auth.js`
+### `src/routes/v1/auth/` — Auth Routes (Folder)
 
-| Method | Path | Middleware | Handler |
-|---|---|---|---|
-| `POST` | `/register` | `registerLimiter, validate(registerSchema)` | `auth.controller.register` |
-| `POST` | `/login` | `loginLimiter, validate(loginSchema)` | `auth.controller.login` |
-| `POST` | `/refresh-token` | `refreshLimiter, validate(refreshTokenSchema)` | `auth.controller.refresh` |
+| File | Method | Path | Middleware | Handler |
+|---|---|---|---|---|
+| `register.js` | POST | `/register` | `registerLimiter, validate(registerSchema)` | `auth.controller.register` |
+| `login.js` | POST | `/login` | `loginLimiter, validate(loginSchema)` | `auth.controller.login` |
+| `refresh-token.js` | POST | `/refresh-token` | `refreshLimiter, validate(refreshTokenSchema)` | `auth.controller.refresh` |
 
 ---
 
@@ -484,8 +496,20 @@ container.register('dbStrategy', dbStrategy);
 - OpenAPI 3.0.0
 - Title: "SaaS Framework Custom Engine Architecture"
 - Server base path: `/api/v1`
-- Paths from `auth.doc.js`
+- Paths auto-generated via `loader.js` from route definition `docs` properties
 - Components from `components/index.js`
+
+### `src/routes/swagger/loader.js` — Swagger Auto-Generator
+
+| Export | Description |
+|---|---|
+| `generatePaths({ routesDir, manualPaths })` | Scans route definitions via `collectRoutes`, reads each route's `docs` property, and builds an OpenAPI paths object. Falls back to sensible defaults when `docs` is omitted. `manualPaths` allows overriding or extending auto-generated paths. |
+
+**Default behavior**:
+- Tag is derived from the first URL segment (`/auth/login` → `Auth`)
+- Success response: `200` for GET, `201` for POST
+- Auto-includes `400` (`ValidationError`) and `500` (`InternalServerError`) refs
+- When `docs` is present on a route, `requestBody` and `responses` are fully customizable
 
 ### `src/routes/swagger/components/index.js` — Shared Components
 
@@ -511,13 +535,15 @@ container.register('dbStrategy', dbStrategy);
 | `UserEntity` | `_id`, `name`, `email`, `createdAt` |
 | `AuthTokenPayload` | `accessToken` (JWT string), `refreshToken` (JWT string) |
 
-### `src/routes/swagger/v1/auth.doc.js`
+### Auto-Generated from Route Files (via `loader.js`)
 
-| Endpoint | Method | Request Body | Responses |
+Each route file in `src/routes/v1/` can export a `docs` property. The swagger loader auto-generates path definitions:
+
+| Endpoint | Source File | Method | Request Body | Responses |
 |---|---|---|---|---|---|
-| `/auth/register` | POST | `RegisterRequest` | 201 (UserResponse), 400 (ValidationError), 409 (ConflictError), 500 (InternalServerError) |
-| `/auth/login` | POST | `LoginRequest` | 201 (UserResponse + accessToken + refreshToken), 400 (ValidationError), 401 (UnauthorizedError), 500 (InternalServerError) |
-| `/auth/refresh-token` | POST | `RefreshTokenRequest` | 200 (accessToken + refreshToken), 400 (ValidationError), 401 (UnauthorizedError), 500 (InternalServerError) |
+| `/auth/register` | `routes/v1/auth/register.js` | POST | `RegisterRequest` | 201 (UserResponse), 400 (ValidationError), 409 (ConflictError), 500 (InternalServerError) |
+| `/auth/login` | `routes/v1/auth/login.js` | POST | `LoginRequest` | 201 (UserResponse + tokens), 400 (ValidationError), 401 (UnauthorizedError), 500 (InternalServerError) |
+| `/auth/refresh-token` | `routes/v1/auth/refresh-token.js` | POST | `{ refreshToken }` | 200 (tokens), 400 (ValidationError), 401 (UnauthorizedError), 500 (InternalServerError) |
 
 ---
 

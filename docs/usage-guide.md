@@ -21,10 +21,11 @@ A practical guide to adding new features, extending the framework, and following
 11. [Working with Environment Variables](#11-working-with-environment-variables)
 12. [Implementing a Strategy Backend](#12-implementing-a-strategy-backend)
 13. [Authenticating Routes (JWT Middleware)](#13-authenticating-routes-jwt-middleware)
-14. [Using the Model Auto-Loader](#14-using-the-model-auto-loader)
-15. [Exposing an Endpoint in Swagger](#15-exposing-an-endpoint-in-swagger)
-16. [Testing](#16-testing)
-17. [Conventions Summary](#17-conventions-summary)
+14. [Using the Route Auto-Loader](#14-using-the-route-auto-loader)
+15. [Using the Model Auto-Loader](#15-using-the-model-auto-loader)
+16. [Exposing an Endpoint in Swagger](#16-exposing-an-endpoint-in-swagger)
+17. [Testing](#17-testing)
+18. [Conventions Summary](#18-conventions-summary)
 
 ---
 
@@ -109,31 +110,25 @@ module.exports = { getProfile };
 
 ### Step 5 — Route (`src/routes/v1/`)
 
+Create a route definition file in the appropriate folder:
+
 ```js
-// src/routes/v1/user.js
-const router = require('express').Router();
+// src/routes/v1/user/profile.js
 const validateMiddleware = require('../../middlewares/validation');
 const getProfileSchema = require('../../validation/user/getProfile');
 const { getProfile } = require('../../controllers/user.controller');
 
-router.post('/profile', [validateMiddleware(getProfileSchema)], getProfile);
-
-module.exports = router;
+module.exports = {
+  method: 'post',
+  path: '/profile',
+  middleware: [validateMiddleware(getProfileSchema)],
+  handler: getProfile,
+};
 ```
 
-### Step 6 — Register in v1 Router
+### Step 6 — Done (auto-loader)
 
-```js
-// src/routes/v1/index.js
-const router = require('express').Router();
-const authRoutes = require('./auth');
-const userRoutes = require('./user');
-
-router.use('/auth', authRoutes);
-router.use('/user', userRoutes);
-
-module.exports = router;
-```
+The loader picks it up automatically. `src/routes/v1/user/profile.js` → `POST /user/profile`. No manual registration needed.
 
 ### Step 7 — Register Service in Container
 
@@ -196,11 +191,14 @@ router.post('/resource', [validateMiddleware(mySchema)], myHandler);
 module.exports = router;
 ```
 
-Mount it in the version aggregator:
+No manual mounting — the `src/routes/v1/index.js` auto-loader picks up any `.js` file in `src/routes/v1/` by filename convention:
 
+- `myRoutes.js` → mounted at `/my-routes`
+- `user.js` → mounted at `/user`
+
+For a custom mount path, export `{ router, path }`:
 ```js
-// src/routes/v1/index.js
-router.use('/my-resource', myRoutes);
+module.exports = { router, path: '/custom-path' };
 ```
 
 For non-versioned routes, add directly to `src/routes/index.js`:
@@ -391,6 +389,8 @@ In development, the console shows all levels with colors. In production, only `w
 
 ## 11. Working with Environment Variables
 
+> **Note**: The next section (Implementing a Strategy Backend) is numbered 12 below.
+
 ### Adding a new env var
 
 1. Add to all `.env.*` files with appropriate values:
@@ -428,7 +428,7 @@ if (envType === 'production') {
 
 ---
 
-## 11. Implementing a Strategy Backend
+## 12. Implementing a Strategy Backend
 
 Strategy files are in `src/strategies/`. Each domain has a directory with interchangeable implementations.
 
@@ -503,7 +503,7 @@ container.register('emailService', emailService);
 
 ---
 
-## 12. Authenticating Routes (JWT Middleware)
+## 13. Authenticating Routes (JWT Middleware)
 
 The `authenticate` middleware in `src/middlewares/auth.js` protects routes with JWT verification.
 
@@ -549,7 +549,59 @@ The `POST /auth/refresh-token` endpoint does **not** require the `authenticate` 
 
 ---
 
-## 13. Using the Model Auto-Loader
+## 14. Using the Route Auto-Loader
+
+`src/routes/v1/loader.js` recursively scans `src/routes/v1/` and builds an Express router from folder-based route definition files.
+
+### How it works
+
+Each route file exports a config object:
+
+```js
+// src/routes/v1/user/profile.js
+module.exports = {
+  method: 'get',
+  path: '/profile',
+  middleware: [authenticate],
+  handler: getProfile,
+};
+```
+
+The loader recursively walks directories and registers every definition:
+- `src/routes/v1/auth/login.js` → `POST /auth/login`
+- `src/routes/v1/user/profile.js` → `GET /user/profile`
+
+### Adding a new route group
+
+Create a directory + file in `src/routes/v1/`:
+
+```js
+// src/routes/v1/payment/webhook.js
+const stripeWebhook = require('../../../controllers/payment.controller').webhook;
+
+module.exports = {
+  method: 'post',
+  path: '/webhook',
+  handler: stripeWebhook,
+};
+```
+
+This registers `POST /payment/webhook` — no manual wiring needed.
+
+### For parameterized routes
+
+```js
+module.exports = {
+  method: 'get',
+  path: '/:id',
+  middleware: [authenticate],
+  handler: getUserById,
+};
+```
+
+---
+
+## 15. Using the Model Auto-Loader
 
 `src/models/index.js` automatically discovers and registers all Mongoose models in `src/models/`.
 
@@ -589,63 +641,75 @@ async findById(modelName, id) {
 
 ---
 
-## 14. Exposing an Endpoint in Swagger
+## 16. Exposing an Endpoint in Swagger
 
----
-
-## 14. Exposing an Endpoint in Swagger
-
-Add a new path doc file in `src/routes/swagger/v1/`:
+Swagger docs are auto-generated from route files. Add a `docs` property to your route definition:
 
 ```js
-// src/routes/swagger/v1/user.doc.js
+// src/routes/v1/user/profile.js
 module.exports = {
-  '/user/profile': {
-    post: {
-      tags: ['Users'],
-      summary: 'Get user profile',
-      requestBody: {
-        required: true,
+  method: 'get',
+  path: '/profile',
+  middleware: [authenticate],
+  handler: getProfile,
+  docs: {
+    tags: ['Users'],
+    summary: 'Get user profile',
+    description: 'Returns the authenticated user profile.',
+    responses: {
+      200: {
+        description: 'User profile returned successfully',
         content: {
           'application/json': {
-            schema: { $ref: '#/components/schemas/GetProfileRequest' }
+            schema: {
+              type: 'object',
+              properties: {
+                success: { type: 'boolean', example: true },
+                traceId: { type: 'string', example: '6e256651' },
+                data: { $ref: '#/components/schemas/UserResponse' }
+              }
+            }
           }
         }
       },
-      responses: {
-        200: { description: 'User profile returned successfully' },
-        400: { $ref: '#/components/responses/ValidationError' },
-        404: { $ref: '#/components/responses/NotFoundError' },
-        500: { $ref: '#/components/responses/InternalServerError' }
-      }
+      401: { $ref: '#/components/responses/UnauthorizedError' },
+      500: { $ref: '#/components/responses/InternalServerError' }
     }
   }
 };
 ```
 
-Then merge it into the root document:
+That's it — the swagger loader picks it up automatically. No manual imports in `swagger/index.js`.
+
+### Manual path overrides (advanced)
+
+For complex cases, pass `manualPaths` to `generatePaths` in `swagger/index.js`:
 
 ```js
-// src/routes/swagger/index.js
-const userPaths = require('./v1/user.doc');
+const { generatePaths } = require('./loader');
+
+const manualPaths = {
+  '/legacy/endpoint': {
+    get: { tags: ['Legacy'], summary: 'Old endpoint', responses: { 200: { description: 'OK' } } }
+  }
+};
 
 module.exports = {
   // ...
-  paths: {
-    ...authPaths,
-    ...userPaths
-  },
+  paths: generatePaths({ manualPaths }),
   // ...
 };
 ```
 
-For request/response schemas, either:
-- Define them inline in `src/routes/swagger/schemas/`
-- Auto-generate from Joi via `joi-to-swagger` in `src/routes/swagger/components/index.js`
+### Schema references
+
+For request/response schemas referenced in your `docs`:
+- Define them in `src/routes/swagger/schemas/`
+- Or auto-generate from Joi via `joi-to-swagger` in `src/routes/swagger/components/index.js`
 
 ---
 
-## 16. Testing
+## 17. Testing
 
 Tests live in `src/tests/` and use Jest.
 
@@ -685,7 +749,7 @@ npm test                          # local
 
 ---
 
-## 17. Conventions Summary
+## 18. Conventions Summary
 
 | Concern | Location | Responsibility |
 |---|---|---|
