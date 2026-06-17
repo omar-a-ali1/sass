@@ -24,20 +24,6 @@ module.exports = {
     tags: ['Authentication'],
     summary: 'Refresh token pair',
     description: 'Accepts a valid refresh token and returns a new access token + refresh token pair. Use this when the access token expires.',
-    requestBody: {
-      required: true,
-      content: {
-        'application/json': {
-          schema: {
-            type: 'object',
-            properties: {
-              refreshToken: { type: 'string', description: 'The refresh token issued during login' }
-            },
-            required: ['refreshToken']
-          }
-        }
-      }
-    },
     responses: {
       200: {
         description: 'Tokens refreshed successfully — returns new access and refresh tokens',

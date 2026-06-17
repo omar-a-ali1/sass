@@ -61,6 +61,25 @@ class SecurityRepository {
   }
 
   /**
+   * Sign a reset-password JWT payload
+   *
+   * Uses the refresh secret (since reset tokens are also sensitive),
+   * but with a very short TTL (e.g. 15m).
+   *
+   * @param {Object} payload    - Data to embed in the token
+   * @param {string} [ttl=null] - Optional custom expiration
+   * @returns {string} Signed reset JWT string
+   */
+  assignResetJwt(payload, ttl = null)
+  {
+    return jwt.sign(
+      payload,
+      env?.jwt?.refreshSecret,
+      { expiresIn: ttl ?? env?.jwt?.resetExpiresIn ?? '15m' }
+    );
+  }
+
+  /**
    * Compare a plain-text value against a bcrypt hash
    * @async
    * @param {string} providedPassword  - Raw password to verify
@@ -98,6 +117,18 @@ const verifyRefreshJwt = (token) => {
   return jwt.verify(token, env?.jwt?.refreshSecret);
 };
 
+/**
+ * Verify a reset-password JWT and return the decoded payload
+ *
+ * @param {string} token - Reset JWT string to verify
+ * @returns {Object} Decoded payload
+ * @throws {Error} If token is invalid or expired
+ */
+const verifyResetJwt = (token) => {
+  return jwt.verify(token, env?.jwt?.refreshSecret);
+};
+
 module.exports = SecurityRepository;
 module.exports.verifyJwt = verifyJwt;
 module.exports.verifyRefreshJwt = verifyRefreshJwt;
+module.exports.verifyResetJwt = verifyResetJwt;

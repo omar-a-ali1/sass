@@ -52,6 +52,8 @@ module.exports = {
     refreshSecret: process.env.JWT_REFRESH_SECRET,
     /** Refresh token expiration duration (e.g. '7d', '30d') */
     refreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
+    /** Reset-password JWT expiration (e.g. '15m') */
+    resetExpiresIn: process.env.JWT_RESET_EXPIRES_IN || '15m',
   },
   cors: {
     /** Allowed CORS origin(s) */
@@ -61,6 +63,13 @@ module.exports = {
   rateLimit: {
     /** Maximum number of requests per rate-limit window */
     max: parseInt(process.env.RATE_LIMIT_MAX, 10) || null,
+  },
+
+  email: {
+    /** Email driver ('console' or 'smtp') */
+    driver: process.env.EMAIL_DRIVER || 'console',
+    /** Default from address */
+    from: process.env.EMAIL_FROM || 'noreply@example.com',
   },
 
   storage: {

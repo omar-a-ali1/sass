@@ -60,6 +60,18 @@ class UserRepository
   {
     return await this.db.create('User', userData);
   }
+
+  /**
+   * Update a user document by ID
+   * @async
+   * @param {string} id   - Document ID
+   * @param {Object} data - Fields to update
+   * @returns {Promise<Object|null>} Updated user document or null
+   */
+  async updateById(id, data)
+  {
+    return await this.db.findByIdAndUpdate('User', id, data);
+  }
 }
 
 module.exports = UserRepository

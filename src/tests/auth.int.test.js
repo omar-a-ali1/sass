@@ -7,18 +7,21 @@ const mockUserDoc = {
   name: 'Test User',
   email: 'test@example.com',
   password: '',
+  role: 'user',
   __v: 0,
 };
 
 const mockModel = {
   findOne: jest.fn(),
   findById: jest.fn(),
+  findByIdAndUpdate: jest.fn(),
   create: jest.fn(),
   lean: jest.fn(),
 };
 
 mockModel.findOne.mockReturnValue(mockModel);
 mockModel.findById.mockReturnValue(mockModel);
+mockModel.findByIdAndUpdate.mockReturnValue(mockModel);
 mockModel.lean.mockResolvedValue(null);
 
 function MockSchema(def) { this.def = def; }
@@ -185,6 +188,173 @@ describe('Auth Integration', () => {
 
       expect(res.status).toBe(400);
       expect(res.body.error).toHaveProperty('fields');
+    });
+  });
+
+  describe('POST /api/v1/auth/forgot-password', () => {
+    it('should return success when email exists', async () => {
+      mockModel.lean.mockResolvedValue({ ...mockUserDoc });
+
+      const res = await request(app)
+        .post('/api/v1/auth/forgot-password')
+        .send({ email: 'test@example.com' });
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.message).toMatch(/reset link has been sent/i);
+    });
+
+    it('should return success even when email does not exist', async () => {
+      mockModel.lean.mockResolvedValue(null);
+
+      const res = await request(app)
+        .post('/api/v1/auth/forgot-password')
+        .send({ email: 'unknown@test.com' });
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.message).toMatch(/reset link has been sent/i);
+    });
+
+    it('should return 400 for invalid email', async () => {
+      const res = await request(app)
+        .post('/api/v1/auth/forgot-password')
+        .send({ email: 'not-an-email' });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error).toHaveProperty('fields');
+    });
+  });
+
+  describe('POST /api/v1/auth/reset-password', () => {
+    let validToken;
+
+    beforeAll(() => {
+      validToken = securityRepo.assignResetJwt(
+        { id: mockUserDoc._id, email: mockUserDoc.email },
+        '15m'
+      );
+    });
+
+    it('should reset password with a valid token', async () => {
+      mockModel.lean.mockResolvedValue({ ...mockUserDoc });
+
+      const res = await request(app)
+        .post('/api/v1/auth/reset-password')
+        .send({ token: validToken, password: 'newPassword123' });
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.message).toMatch(/reset successfully/i);
+    });
+
+    it('should return 401 with an expired token', async () => {
+      const expiredToken = jwt.sign(
+        { id: mockUserDoc._id, email: mockUserDoc.email },
+        process.env.JWT_REFRESH_SECRET || 'super_secret_refresh_key',
+        { expiresIn: '0s' }
+      );
+
+      const res = await request(app)
+        .post('/api/v1/auth/reset-password')
+        .send({ token: expiredToken, password: 'newPassword123' });
+
+      expect(res.status).toBe(401);
+      expect(res.body.error.message).toMatch(/invalid or expired reset token/i);
+    });
+
+    it('should return 401 with a malformed token', async () => {
+      const res = await request(app)
+        .post('/api/v1/auth/reset-password')
+        .send({ token: 'not-a-valid-jwt', password: 'newPassword123' });
+
+      expect(res.status).toBe(401);
+      expect(res.body.error.message).toMatch(/invalid or expired reset token/i);
+    });
+
+    it('should return 400 for missing fields', async () => {
+      const res = await request(app)
+        .post('/api/v1/auth/reset-password')
+        .send({});
+
+      expect(res.status).toBe(400);
+      expect(res.body.error).toHaveProperty('fields');
+    });
+
+    it('should return 400 for short password', async () => {
+      const res = await request(app)
+        .post('/api/v1/auth/reset-password')
+        .send({ token: validToken, password: '1234567' });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error).toHaveProperty('fields');
+    });
+  });
+
+  describe('GET /api/v1/auth/me', () => {
+    let validToken;
+
+    beforeAll(() => {
+      validToken = securityRepo.assignJwt(
+        { id: mockUserDoc._id, email: mockUserDoc.email, role: 'user' },
+        '1h'
+      );
+    });
+
+    it('should return the user profile with a valid token', async () => {
+      mockModel.lean.mockResolvedValue({ ...mockUserDoc });
+
+      const res = await request(app)
+        .get('/api/v1/auth/me')
+        .set('Authorization', `Bearer ${validToken}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.email).toBe('test@example.com');
+      expect(res.body.data.name).toBe('Test User');
+      expect(res.body.data).not.toHaveProperty('password');
+    });
+
+    it('should return 401 when no token is provided', async () => {
+      const res = await request(app).get('/api/v1/auth/me');
+
+      expect(res.status).toBe(401);
+      expect(res.body.error.message).toMatch(/no token provided/i);
+    });
+
+    it('should return 401 when token is invalid', async () => {
+      const res = await request(app)
+        .get('/api/v1/auth/me')
+        .set('Authorization', 'Bearer invalid-token');
+
+      expect(res.status).toBe(401);
+      expect(res.body.error.message).toMatch(/invalid or expired token/i);
+    });
+
+    it('should return 401 when token is expired', async () => {
+      const expiredToken = jwt.sign(
+        { id: mockUserDoc._id, email: mockUserDoc.email },
+        process.env.JWT_SECRET || 'super_secret_test_key_only',
+        { expiresIn: '0s' }
+      );
+
+      const res = await request(app)
+        .get('/api/v1/auth/me')
+        .set('Authorization', `Bearer ${expiredToken}`);
+
+      expect(res.status).toBe(401);
+      expect(res.body.error.message).toMatch(/invalid or expired token/i);
+    });
+
+    it('should return 404 when user does not exist in DB', async () => {
+      mockModel.lean.mockResolvedValue(null);
+
+      const res = await request(app)
+        .get('/api/v1/auth/me')
+        .set('Authorization', `Bearer ${validToken}`);
+
+      expect(res.status).toBe(404);
+      expect(res.body.error.message).toMatch(/user not found/i);
     });
   });
 

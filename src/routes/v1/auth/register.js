@@ -24,14 +24,6 @@ module.exports = {
     tags: ['Authentication'],
     summary: 'Register a new account',
     description: 'Creates a new user profile, securely hashes the password before persisting, and returns the sanitized user data.',
-    requestBody: {
-      required: true,
-      content: {
-        'application/json': {
-          schema: { $ref: '#/components/schemas/RegisterRequest' }
-        }
-      }
-    },
     responses: {
       201: {
         description: 'Account created successfully — returns sanitized user profile',

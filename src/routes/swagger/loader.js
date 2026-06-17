@@ -12,7 +12,24 @@
  */
 
 const { collectRoutes } = require('../v1/loader');
+const j2s = require('joi-to-swagger');
 const path = require('path');
+
+/**
+ * Build an OpenAPI requestBody from a Joi schema
+ *
+ * @param {import('joi').ObjectSchema} schema - Joi validation schema
+ * @returns {Object} OpenAPI requestBody object
+ */
+function requestBodyFromSchema(schema) {
+  const { swagger } = j2s(schema);
+  return {
+    required: true,
+    content: {
+      'application/json': { schema: swagger },
+    },
+  };
+}
 
 /**
  * Build a default response set for a route
@@ -66,21 +83,19 @@ function generatePaths(options = {}) {
       paths[openapiPath] = {};
     }
 
-    if (route.docs) {
-      paths[openapiPath][route.method] = {
-        tags: route.docs.tags || [tag],
-        summary: route.docs.summary || `${route.method.toUpperCase()} ${route.path}`,
-        description: route.docs.description || '',
-        ...(route.docs.requestBody ? { requestBody: route.docs.requestBody } : {}),
-        responses: route.docs.responses || defaultResponses(route),
-      };
-    } else {
-      paths[openapiPath][route.method] = {
-        tags: [tag],
-        summary: `${route.method.toUpperCase()} ${route.path}`,
-        responses: defaultResponses(route),
-      };
-    }
+    const docs = route.docs || {};
+
+    /** Auto-generate requestBody from Joi schema when docs don't provide one */
+    const requestBody = docs.requestBody
+      || (route.validationSchema ? requestBodyFromSchema(route.validationSchema) : undefined);
+
+    paths[openapiPath][route.method] = {
+      tags: docs.tags || [tag],
+      summary: docs.summary || `${route.method.toUpperCase()} ${route.path}`,
+      description: docs.description || '',
+      ...(requestBody ? { requestBody } : {}),
+      responses: docs.responses || defaultResponses(route),
+    };
   }
 
   return paths;

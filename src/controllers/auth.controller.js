@@ -95,8 +95,97 @@ const refresh = async (req, res, next) =>
   }
 }
 
+/**
+ * Initiate forgot-password flow
+ *
+ * POST /api/v1/auth/forgot-password
+ * Accepts an email address, sends a reset link if the email is
+ * registered. Always returns the same response to avoid leaking
+ * whether the email exists.
+ *
+ * @async
+ * @param {Object}   req  - Express request object
+ * @param {Object}   res  - Express response object
+ * @param {Function} next - Express next middleware function
+ */
+const forgotPassword = async (req, res, next) =>
+{
+  try {
+    const authService = req.getService('authService');
+    const { email } = req.validatedBody;
+    const data = await authService.forgotPassword(email);
+    return res.status(200).json({
+      success: true,
+      traceId: req.id,
+      data
+    });
+  } catch (err)
+  {
+    next(err)
+  }
+}
+
+/**
+ * Reset password using a reset token
+ *
+ * POST /api/v1/auth/reset-password
+ * Verifies the reset JWT and updates the user's password.
+ *
+ * @async
+ * @param {Object}   req  - Express request object
+ * @param {Object}   res  - Express response object
+ * @param {Function} next - Express next middleware function
+ */
+const resetPassword = async (req, res, next) =>
+{
+  try {
+    const authService = req.getService('authService');
+    const { token, password } = req.validatedBody;
+    const data = await authService.resetPassword(token, password);
+    return res.status(200).json({
+      success: true,
+      traceId: req.id,
+      data
+    });
+  } catch (err)
+  {
+    next(err)
+  }
+}
+
+/**
+ * Get authenticated user profile
+ *
+ * GET /api/v1/auth/me
+ * Requires a valid Bearer JWT. Returns the current user's profile
+ * from the database.
+ *
+ * @async
+ * @param {Object}   req  - Express request object
+ * @param {Object}   res  - Express response object
+ * @param {Function} next - Express next middleware function
+ */
+const getProfile = async (req, res, next) =>
+{
+  try {
+    const authService = req.getService('authService');
+    const data = await authService.getProfile(req.user.id);
+    return res.status(200).json({
+      success: true,
+      traceId: req.id,
+      data
+    });
+  } catch (err)
+  {
+    next(err)
+  }
+}
+
 module.exports = {
   login,
   register,
-  refresh
+  refresh,
+  forgotPassword,
+  resetPassword,
+  getProfile
 }

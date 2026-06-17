@@ -10,18 +10,21 @@
 
 const ConflictError = require("../errors/ConflictError");
 const UnauthorizedError = require('../errors/UnauthorizedError')
+const NotFoundError = require('../errors/NotFoundError')
 const sanitizeData = require('../helpers/sanitizeData');
 
 class AuthService
 {
   /**
    * @param {Object}   deps
-   * @param {Object}   deps.securityService  - SecurityService instance (hashing, JWT,...)
-   * @param {Object}   deps.userRepository   - UserRepository instance (data access)
+   * @param {Object}   deps.securityService   - SecurityService instance (hashing, JWT,...)
+   * @param {Object}   deps.userRepository    - UserRepository instance (data access)
+   * @param {Object}   deps.emailStrategy     - Email strategy instance (console, SMTP, ...)
    */
-  constructor({ securityService, userRepository }) {
+  constructor({ securityService, userRepository, emailStrategy }) {
     this.userRepository = userRepository
     this.securityService = securityService
+    this.emailStrategy = emailStrategy
   }
 
   /**
@@ -104,6 +107,88 @@ class AuthService
    * @returns {Promise<{user: Object, accessToken: string, refreshToken: string}>} New token pair + profile
    * @throws {UnauthorizedError} If refresh token is invalid or user not found
    */
+  /**
+   * Initiate a password-reset flow
+   *
+   * Looks up the user by email. If found, generates a short-lived
+   * reset JWT and sends it via the email strategy. Always returns
+   * a 200-level response to avoid leaking whether the email exists.
+   *
+   * @async
+   * @param {string} email - Registered email address
+   * @returns {Promise<{message: string}>}
+   */
+  async forgotPassword(email)
+  {
+    const user = await this.userRepository.findByEmail(email);
+
+    if (!user) {
+      return { message: 'If that email is registered, a reset link has been sent.' };
+    }
+
+    const resetToken = this.securityService.generateResetToken(user);
+    const resetUrl = `${process.env.APP_URL || 'http://localhost:5000'}/reset-password?token=${resetToken}`;
+
+    await this.emailStrategy.sendEmail({
+      to: user.email,
+      subject: 'Password Reset Request',
+      text: `You requested a password reset. Click the link to reset your password: ${resetUrl}\n\nThis link expires in 15 minutes. If you did not request this, please ignore this email.`,
+      html: `<p>You requested a password reset.</p><p>Click <a href="${resetUrl}">here</a> to reset your password.</p><p>This link expires in 15 minutes. If you did not request this, please ignore this email.</p>`,
+    });
+
+    return { message: 'If that email is registered, a reset link has been sent.' };
+  }
+
+  /**
+   * Reset a user's password using a valid reset token
+   *
+   * Verifies the reset JWT, looks up the user, hashes the new
+   * password, and persists the update.
+   *
+   * @async
+   * @param {string} resetToken  - Valid reset JWT
+   * @param {string} newPassword - New plain-text password
+   * @returns {Promise<{message: string}>}
+   * @throws {UnauthorizedError} If the token is invalid or expired
+   * @throws {NotFoundError} If the user no longer exists
+   */
+  async resetPassword(resetToken, newPassword)
+  {
+    let decoded;
+    try {
+      decoded = this.securityService.verifyResetToken(resetToken);
+    } catch (err) {
+      throw new UnauthorizedError('Invalid or expired reset token');
+    }
+
+    const user = await this.userRepository.findById(decoded.id);
+    if (!user) {
+      throw new NotFoundError('User not found');
+    }
+
+    const hashedPassword = await this.securityService.hashPassword(newPassword);
+    await this.userRepository.updateById(decoded.id, { password: hashedPassword });
+
+    return { message: 'Password has been reset successfully.' };
+  }
+
+  /**
+   * Get the authenticated user's profile
+   *
+   * @async
+   * @param {string} id - User document ID (from JWT payload)
+   * @returns {Promise<Object>} Sanitized user profile
+   * @throws {NotFoundError} If the user no longer exists
+   */
+  async getProfile(id)
+  {
+    const user = await this.userRepository.findById(id);
+    if (!user) {
+      throw new NotFoundError('User not found');
+    }
+    return sanitizeData(user);
+  }
+
   async refreshToken(refreshToken)
   {
     let decoded;

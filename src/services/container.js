@@ -49,21 +49,44 @@ const container = new DependencyContainer();
 // ---------- Strategy Registration ----------
 
 const MongoStrategy = require('../strategies/database/mongo.strategy');
+const PostgresStrategy = require('../strategies/database/postgres.strategy');
 const LocalStorageStrategy = require('../strategies/storage/localStorage.strategy');
+const S3StorageStrategy = require('../strategies/storage/s3Storage.strategy');
+const ConsoleEmailStrategy = require('../strategies/email/consoleEmail.strategy');
+const StubEmailStrategy = require('../strategies/email/stubEmail.strategy');
 
 /** Auto-register all Mongoose models from src/models/ */
 require('../models/index');
 
 /** Database strategy — selected by config.database.driver */
-const dbStrategy = new MongoStrategy();
+const dbDrivers = {
+  mongo: () => new MongoStrategy(),
+  postgres: () => new PostgresStrategy(),
+};
+const dbStrategy = (dbDrivers[config.database.driver] || dbDrivers.mongo)();
 container.register('dbStrategy', dbStrategy);
 
 /** Storage strategy — selected by config.storage.driver */
-const storageStrategy = new LocalStorageStrategy({
-  uploadDir: config.storage.uploadDir,
-  baseUrl: config.storage.baseUrl
-});
+const storageDrivers = {
+  local: () => new LocalStorageStrategy({
+    uploadDir: config.storage.uploadDir,
+    baseUrl: config.storage.baseUrl
+  }),
+  s3: () => new S3StorageStrategy({
+    bucket: config.storage.s3Bucket,
+    region: config.storage.s3Region,
+  }),
+};
+const storageStrategy = (storageDrivers[config.storage.driver] || storageDrivers.local)();
 container.register('storageStrategy', storageStrategy);
+
+/** Email strategy — selected by config.email.driver */
+const emailDrivers = {
+  console: () => new ConsoleEmailStrategy(),
+  smtp: () => new StubEmailStrategy(),
+};
+const emailStrategy = (emailDrivers[config.email.driver] || emailDrivers.console)();
+container.register('emailStrategy', emailStrategy);
 
 // ---------- Repository Registration ----------
 
@@ -89,10 +112,11 @@ const secService = new SecurityService({
 });
 container.register('securityService', secService);
 
-/** AuthService orchestrates registration and login business logic */
+/** AuthService orchestrates registration, login, and password-reset business logic */
 const authService = new AuthService({
   securityService: container.get('securityService'),
-  userRepository: container.get('userRepository')
+  userRepository: container.get('userRepository'),
+  emailStrategy: container.get('emailStrategy')
 });
 container.register('authService', authService);
 

@@ -96,6 +96,56 @@ module.exports = {
       }
     }
   },
+  ForbiddenError: {
+    description: 'Forbidden - You do not have permission to perform this action',
+    content: {
+      'application/json': {
+        schema: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean', example: false },
+            status: { type: 'string', example: 'fail' },
+            traceId: { type: 'string', example: '84e38446' },
+            error: {
+              type: 'object',
+              properties: {
+                message: { type: 'string', example: 'You do not have permission to perform this action' },
+                stack: {
+                  type: 'string',
+                  example: 'Error: You do not have permission to perform this action\n    at authorize (/usr/src/app/src/middlewares/authorize.js:28:34)\n    at Layer.handleRequest (/usr/src/app/node_modules/router/lib/layer.js:152:17)...'
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  NotFoundError: {
+    description: 'Not Found - The requested resource could not be found',
+    content: {
+      'application/json': {
+        schema: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean', example: false },
+            status: { type: 'string', example: 'fail' },
+            traceId: { type: 'string', example: 'a1b2c3d4' },
+            error: {
+              type: 'object',
+              properties: {
+                message: { type: 'string', example: 'User not found' },
+                stack: {
+                  type: 'string',
+                  example: 'Error: User not found\n    at AuthService.getProfile (/usr/src/app/src/services/authService.js:49:17)...'
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
   InternalServerError: {
     description: 'Internal Server Error - Something went wrong on the core system',
     content: {

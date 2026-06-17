@@ -12,6 +12,8 @@
 const j2s = require('joi-to-swagger');
 const RegisterUserSchema = require('../../../validation/auth/register');
 const LoginUserSchema = require('../../../validation/auth/login');
+const ForgotPasswordSchema = require('../../../validation/auth/forgotPassword');
+const ResetPasswordSchema = require('../../../validation/auth/resetPassword');
 const baseResponses = require('./responses');
 const entitySchemas = require('../schemas');
 
@@ -35,6 +37,10 @@ module.exports = {
     LoginRequest: j2s(LoginUserSchema).swagger,
     /** Auto-generated from register Joi schema */
     RegisterRequest: j2s(RegisterUserSchema).swagger,
+    /** Auto-generated from forgot-password Joi schema */
+    ForgotPasswordRequest: j2s(ForgotPasswordSchema).swagger,
+    /** Auto-generated from reset-password Joi schema */
+    ResetPasswordRequest: j2s(ResetPasswordSchema).swagger,
 
     ...entitySchemas,
 

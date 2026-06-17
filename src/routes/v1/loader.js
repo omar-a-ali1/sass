@@ -26,6 +26,7 @@ const express = require('express');
  * @property {Function[]} middleware - Express middleware array
  * @property {Function} handler    - Route handler
  * @property {Object}   [docs]     - Optional Swagger/OpenAPI documentation
+ * @property {Object}   [validationSchema] - Joi schema auto-detected from middleware
  */
 
 /**
@@ -53,12 +54,20 @@ function collectRoutes(dir, basePath = '') {
       const def = require(fullPath);
       if (!def || !def.method || !def.handler) continue;
 
+      const middleware = Array.isArray(def.middleware) ? def.middleware : [];
+
+      /** Auto-detect Joi validation schema from middleware chain */
+      const validationSchema = middleware.find(
+        (mw) => typeof mw === 'function' && mw._validationSchema
+      )?._validationSchema || null;
+
       routes.push({
         method: def.method.toLowerCase(),
         path: `${basePath}${def.path || `/${path.basename(entry.name, '.js')}`}`,
-        middleware: Array.isArray(def.middleware) ? def.middleware : [],
+        middleware,
         handler: def.handler,
         docs: def.docs || null,
+        validationSchema,
       });
     }
   }

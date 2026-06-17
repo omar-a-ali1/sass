@@ -152,3 +152,166 @@ describe('LocalStorageStrategy', () => {
     expect(Buffer.from(downloaded)).toEqual(binary);
   });
 });
+
+describe('PostgresStrategy', () => {
+  let PostgresStrategy;
+  let mockQuery;
+  let mockPool;
+
+  beforeAll(() => {
+    mockQuery = jest.fn();
+    mockPool = { connect: jest.fn().mockResolvedValue(), query: mockQuery };
+    jest.mock('pg', () => ({ Pool: jest.fn(() => mockPool) }), { virtual: true });
+    PostgresStrategy = require('../strategies/database/postgres.strategy');
+  });
+
+  beforeEach(() => {
+    mockQuery.mockReset();
+    mockPool.connect.mockClear();
+  });
+
+  it('should find one document by query', async () => {
+    const strategy = new PostgresStrategy({ connectionString: 'postgres://localhost/test' });
+
+    mockQuery.mockResolvedValue({ rows: [{ id: 1, name: 'Test', email: 'test@test.com' }] });
+
+    const result = await strategy.findOne('User', { email: 'test@test.com' });
+
+    expect(result).toEqual({ id: 1, name: 'Test', email: 'test@test.com' });
+    expect(mockQuery).toHaveBeenCalledWith(
+      'SELECT * FROM users WHERE email = $1 LIMIT 1',
+      ['test@test.com']
+    );
+  });
+
+  it('should find document by ID', async () => {
+    const strategy = new PostgresStrategy({ connectionString: 'postgres://localhost/test' });
+
+    mockQuery.mockResolvedValue({ rows: [{ id: 'abc-123', name: 'Test', email: 'test@test.com' }] });
+
+    const result = await strategy.findById('User', 'abc-123');
+
+    expect(result.id).toBe('abc-123');
+    expect(mockQuery).toHaveBeenCalledWith(
+      'SELECT * FROM users WHERE id = $1 LIMIT 1',
+      ['abc-123']
+    );
+  });
+
+  it('should create a document and return it', async () => {
+    const strategy = new PostgresStrategy({ connectionString: 'postgres://localhost/test' });
+
+    mockQuery.mockResolvedValue({ rows: [{ id: 'new-id', name: 'Jane', email: 'jane@test.com' }] });
+
+    const result = await strategy.create('User', { name: 'Jane', email: 'jane@test.com' });
+
+    expect(result.email).toBe('jane@test.com');
+    expect(mockQuery).toHaveBeenCalledWith(
+      'INSERT INTO users (name, email) VALUES ($1, $2) RETURNING *',
+      ['Jane', 'jane@test.com']
+    );
+  });
+
+  it('should update a document by ID', async () => {
+    const strategy = new PostgresStrategy({ connectionString: 'postgres://localhost/test' });
+
+    mockQuery.mockResolvedValue({ rows: [{ id: 'abc-123', name: 'Updated', email: 'test@test.com' }] });
+
+    const result = await strategy.findByIdAndUpdate('User', 'abc-123', { name: 'Updated' });
+
+    expect(result.name).toBe('Updated');
+    expect(mockQuery).toHaveBeenCalledWith(
+      'UPDATE users SET name = $1 WHERE id = $2 RETURNING *',
+      ['Updated', 'abc-123']
+    );
+  });
+
+  it('should delete documents by query', async () => {
+    const strategy = new PostgresStrategy({ connectionString: 'postgres://localhost/test' });
+
+    mockQuery.mockResolvedValue({ rowCount: 1 });
+
+    const result = await strategy.deleteOne('User', { id: 'abc-123' });
+
+    expect(result.deletedCount).toBe(1);
+    expect(mockQuery).toHaveBeenCalledWith(
+      'DELETE FROM users WHERE id = $1',
+      ['abc-123']
+    );
+  });
+
+  it('should count documents', async () => {
+    const strategy = new PostgresStrategy({ connectionString: 'postgres://localhost/test' });
+
+    mockQuery.mockResolvedValue({ rows: [{ count: 3 }] });
+
+    const result = await strategy.count('User', { active: true });
+
+    expect(result).toBe(3);
+    expect(mockQuery).toHaveBeenCalledWith(
+      'SELECT COUNT(*)::int AS count FROM users WHERE active = $1',
+      [true]
+    );
+  });
+});
+
+describe('S3StorageStrategy', () => {
+  let S3StorageStrategy;
+  let mockSend;
+  let mockCommands;
+
+  beforeAll(() => {
+    mockSend = jest.fn();
+    mockCommands = { PutObjectCommand: jest.fn(), GetObjectCommand: jest.fn(), DeleteObjectCommand: jest.fn() };
+    jest.mock('@aws-sdk/client-s3', () => ({
+      S3Client: jest.fn(() => ({ send: mockSend })),
+      PutObjectCommand: mockCommands.PutObjectCommand,
+      GetObjectCommand: mockCommands.GetObjectCommand,
+      DeleteObjectCommand: mockCommands.DeleteObjectCommand,
+    }), { virtual: true });
+    S3StorageStrategy = require('../strategies/storage/s3Storage.strategy');
+  });
+
+  beforeEach(() => {
+    mockSend.mockReset();
+  });
+
+  it('should upload a file', async () => {
+    const strategy = new S3StorageStrategy({ bucket: 'my-bucket', region: 'us-east-1' });
+
+    mockSend.mockResolvedValue({});
+
+    const key = await strategy.upload('avatars/user1.jpg', Buffer.from('content'), 'image/jpeg');
+
+    expect(key).toBe('avatars/user1.jpg');
+    expect(mockSend).toHaveBeenCalledTimes(1);
+  });
+
+  it('should download a file', async () => {
+    const strategy = new S3StorageStrategy({ bucket: 'my-bucket', region: 'us-east-1' });
+
+    mockSend.mockResolvedValue({
+      Body: { transformToByteArray: jest.fn().mockResolvedValue(Buffer.from('file content')) },
+    });
+
+    const content = await strategy.download('avatars/user1.jpg');
+    expect(content.toString()).toBe('file content');
+  });
+
+  it('should delete a file', async () => {
+    const strategy = new S3StorageStrategy({ bucket: 'my-bucket', region: 'us-east-1' });
+
+    mockSend.mockResolvedValue({});
+
+    const result = await strategy.delete('avatars/user1.jpg');
+    expect(result).toBe(true);
+    expect(mockSend).toHaveBeenCalledTimes(1);
+  });
+
+  it('should generate a public URL', () => {
+    const strategy = new S3StorageStrategy({ bucket: 'my-bucket', region: 'eu-west-1' });
+
+    const url = strategy.getUrl('avatars/user1.jpg');
+    expect(url).toBe('https://my-bucket.s3.eu-west-1.amazonaws.com/avatars/user1.jpg');
+  });
+});

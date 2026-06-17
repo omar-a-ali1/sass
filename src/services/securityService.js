@@ -49,7 +49,7 @@ class SecurityService {
    * @returns {string} Signed access JWT string
    */
   generateAuthToken(user) {
-    const payload = { id: user._id, email: user.email };
+    const payload = { id: user._id, email: user.email, role: user.role || 'user' };
     return this.secRepository.assignJwt(payload);
   }
 
@@ -64,8 +64,33 @@ class SecurityService {
    * @returns {string} Signed refresh JWT string
    */
   generateRefreshToken(user) {
-    const payload = { id: user._id, email: user.email };
+    const payload = { id: user._id, email: user.email, role: user.role || 'user' };
     return this.secRepository.assignRefreshJwt(payload);
+  }
+
+  /**
+   * Generate a short-lived reset-password JWT
+   *
+   * @param {Object} user      - User document
+   * @param {string} user._id  - User's identifier
+   * @param {string} user.email - User's email address
+   * @returns {string} Signed reset JWT string
+   */
+  generateResetToken(user) {
+    const payload = { id: user._id, email: user.email };
+    return this.secRepository.assignResetJwt(payload);
+  }
+
+  /**
+   * Verify a reset-password JWT and return the decoded payload
+   *
+   * @param {string} token - Reset JWT string
+   * @returns {Object} Decoded payload { id, email, iat, exp }
+   * @throws {Error} If the token is invalid or expired
+   */
+  verifyResetToken(token) {
+    const { verifyResetJwt } = require('../repositories/security.repository');
+    return verifyResetJwt(token);
   }
 
   /**

@@ -9,8 +9,6 @@
  */
 
 const mongoose = require('mongoose')
-const bcrypt = require('bcrypt')
-const salt = require('../config/environment').bcrypt.salt
 
 /** @type {import('mongoose').Schema} */
 const schema = mongoose.Schema({
@@ -20,17 +18,9 @@ const schema = mongoose.Schema({
   email: String,
   /** Bcrypt-hashed password (never stored in plain text) */
   password: String,
+  /** Authorization role (default: 'user') */
+  role: { type: String, default: 'user' },
 })
-
-/*
- * Pre-save hook (disabled — hashing delegated to SecurityService)
- *
- * schema.pre('save', async function (next) {
- *   if (!this.isModified('password')) return;
- *   this.password = await bcrypt.hash(this.password, salt);
- *   next();
- * });
- */
 
 const User = mongoose.model('User', schema)
 

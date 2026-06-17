@@ -24,14 +24,6 @@ module.exports = {
     tags: ['Authentication'],
     summary: 'Login to the API',
     description: 'Authenticates with email and password. Returns an access token, refresh token, and the sanitized user profile.',
-    requestBody: {
-      required: true,
-      content: {
-        'application/json': {
-          schema: { $ref: '#/components/schemas/LoginRequest' }
-        }
-      }
-    },
     responses: {
       201: {
         description: 'Authentication successful — returns access token, refresh token, and user profile',
