@@ -14,11 +14,25 @@ const MIDDLEWARE_PIPELINE = [
   'favicon',
   'helmet',
   'cors',
+  'cookieParser',
   'json',
   'rateLimiter',
+  'perfMonitor',
   'tracer',
   'injectServices',
 ];
+
+/**
+ * Performance monitoring configuration
+ */
+const PERF_MONITOR_CONFIG = {
+  /** Enable /metrics endpoint */
+  metricsEndpoint: true,
+  /** Collect per-route breakdown */
+  trackRoutes: true,
+  /** Histogram bucket boundaries (ms) */
+  histogramBuckets: [5, 10, 25, 50, 100, 250, 500, 1000, 3000, 5000, 10000],
+};
 
 /**
  * Swagger documentation metadata
@@ -101,4 +115,5 @@ module.exports = {
   HTTP_REQUESTS,
   MIDDLEWARE_PIPELINE,
   SWAGGER_CONFIG,
+  PERF_MONITOR_CONFIG,
 };

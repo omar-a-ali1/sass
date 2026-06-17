@@ -1,7 +1,5 @@
 # SASS Framework — Usage Guide
 
-> **S**calable **A**rchitecture for **S**erver-side **S**ystems
-
 A practical guide to adding new features, extending the framework, and following the established conventions.
 
 ---
@@ -9,21 +7,21 @@ A practical guide to adding new features, extending the framework, and following
 ## Table of Contents
 
 1. [Adding a New Feature](#1-adding-a-new-feature)
-2. [Creating a New Service](#2-creating-a-new-service)
-3. [Creating a New Route](#3-creating-a-new-route)
-4. [Creating a New Controller](#4-creating-a-new-controller)
-5. [Creating a New Repository](#5-creating-a-new-repository)
-6. [Creating a New Validation Schema](#6-creating-a-new-validation-schema)
-7. [Applying Per-Route Rate Limiting](#7-applying-per-route-rate-limiting)
-8. [Registering a Service in the Container](#8-registering-a-service-in-the-container)
-9. [Adding a Custom Error](#9-adding-a-custom-error)
-10. [Using the Logger](#10-using-the-logger)
-11. [Working with Environment Variables](#11-working-with-environment-variables)
-12. [Implementing a Strategy Backend](#12-implementing-a-strategy-backend)
-13. [Authenticating Routes (JWT Middleware)](#13-authenticating-routes-jwt-middleware)
-14. [Using the Route Auto-Loader](#14-using-the-route-auto-loader)
-15. [Using the Model Auto-Loader](#15-using-the-model-auto-loader)
-16. [Exposing an Endpoint in Swagger](#16-exposing-an-endpoint-in-swagger)
+2. [Creating a Route](#2-creating-a-route)
+3. [Dynamic Routes with Path Params](#3-dynamic-routes-with-path-params)
+4. [Query Validation](#4-query-validation)
+5. [Creating a Controller](#5-creating-a-controller)
+6. [Creating a Service](#6-creating-a-service)
+7. [Creating a Repository](#7-creating-a-repository)
+8. [Creating a Validation Schema](#8-creating-a-validation-schema)
+9. [Creating a New Model](#9-creating-a-new-model)
+10. [Registering in the Container](#10-registering-in-the-container)
+11. [Applying Per-Route Rate Limiting](#11-applying-per-route-rate-limiting)
+12. [Authenticating Routes (JWT)](#12-authenticating-routes-jwt)
+13. [Role-Based Authorization](#13-role-based-authorization)
+14. [Exposing in Swagger](#14-exposing-in-swagger)
+15. [Implementing a Strategy Backend](#15-implementing-a-strategy-backend)
+16. [Configuration Reference](#16-configuration-reference)
 17. [Testing](#17-testing)
 18. [Conventions Summary](#18-conventions-summary)
 
@@ -34,41 +32,196 @@ A practical guide to adding new features, extending the framework, and following
 Every feature follows this pipeline:
 
 ```
-Route → Validation Middleware → Controller → Service → Repository → Model
+Route → Controller → Service → Repository → Model
+                ↑
+         Validation (body / query)
 ```
-
-**Example**: Adding a "get user profile" endpoint.
 
 ### Step 1 — Validation Schema (`src/validation/`)
 
 ```js
 // src/validation/user/getProfile.js
 const Joi = require('joi');
-
-const GetProfileSchema = Joi.object({
+module.exports = Joi.object({
   userId: Joi.string().hex().length(24).required()
 });
-
-module.exports = GetProfileSchema;
 ```
 
-### Step 2 — Repository Method (`src/repositories/`)
+### Step 2 — Route File (`src/routes/api/v1/`)
 
 ```js
-// src/repositories/user.repository.js
-class UserRepository {
-  // ...existing methods...
+// src/routes/api/v1/user/profile.js
+const { authenticate } = require('../../../middlewares/auth');
+const validate = require('../../../middlewares/validation');
+const getProfileSchema = require('../../../validation/user/getProfile');
+const { getProfile } = require('../../../controllers/user.controller');
 
-  async findById(id) {
-    return await User.findById(id);
-  }
-}
+module.exports = {
+  method: 'get',
+  path: '/profile',
+  middleware: [authenticate, validate(getProfileSchema)],
+  handler: getProfile,
+};
 ```
 
-### Step 3 — Service Method (`src/services/`)
+### Step 3 — Controller (`src/controllers/`)
 
 ```js
-// src/services/userService.js
+const getProfile = async (req, res, next) => {
+  try {
+    const userService = req.getService('userService');
+    const { userId } = req.validatedBody;
+    const user = await userService.getProfile(userId);
+    return res.status(200).json({ success: true, traceId: req.id, data: user });
+  } catch (err) { next(err); }
+};
+module.exports = { getProfile };
+```
+
+### Step 4 — Service + Repository (standard DI)
+
+See sections below for details.
+
+---
+
+## 2. Creating a Route
+
+Route files live under `src/routes/api/v1/{resource}/{action}.js`. Each file **must export**:
+
+| Key | Required | Description |
+|---|---|---|
+| `method` | Yes | HTTP verb (`get`, `post`, `put`, `delete`, `patch`) |
+| `path` | Yes | URL path relative to the directory |
+| `middleware` | No | Array of Express middleware functions |
+| `handler` | Yes | Route handler `(req, res, next)` |
+
+**Example — simple route:**
+
+```js
+// src/routes/api/v1/ping/status.js
+module.exports = {
+  method: 'get',
+  path: '/status',
+  handler: (req, res) => res.json({ ok: true }),
+};
+```
+
+This registers `GET /api/v1/ping/status` automatically — **zero manual wiring**.
+
+### How the auto-loader maps paths
+
+| File | Directory context | Export `path` | Registered route |
+|---|---|---|---|
+| `auth/login.js` | `auth/` | `/login` | `POST /api/v1/auth/login` |
+| `users/getUser.js` | `users/` | `/:id` | `GET /api/v1/users/:id` |
+| `users/listUsers.js` | `users/` | `/` | `GET /api/v1/users` |
+
+The route prefix (`/api/v1` by default) is configurable via `ROUTE_PREFIX` env var. The auto-loader scans `routes/{ROUTE_PREFIX}/`.
+
+---
+
+## 3. Dynamic Routes with Path Params
+
+Export `path: '/:id'` — the `:id` segment is automatically detected by Swagger and converted to an OpenAPI path parameter:
+
+```js
+// src/routes/api/v1/users/getUser.js
+module.exports = {
+  method: 'get',
+  path: '/:id',
+  middleware: [authenticate],
+  handler: async (req, res) => {
+    const user = await req.getService('userService').getProfile(req.params.id);
+    res.json({ success: true, traceId: req.id, data: user });
+  },
+  docs: { summary: 'Get user by ID', tags: ['Users'] }
+};
+```
+
+The Swagger auto-loader converts `:id` to `{id}` in the OpenAPI path key and generates a `parameters` array with `{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }`.
+
+---
+
+## 4. Query Validation
+
+Use `validateQuery(joiSchema)` from `src/middlewares/validation.js`:
+
+```js
+// src/validation/users/list.js
+const Joi = require('joi');
+module.exports = Joi.object({
+  page:   Joi.number().integer().min(1).default(1),
+  limit:  Joi.number().integer().min(1).max(100).default(20),
+  sort:   Joi.string().valid('createdAt', '-createdAt').default('-createdAt'),
+  search: Joi.string().allow('').optional(),
+});
+```
+
+```js
+// src/routes/api/v1/users/listUsers.js
+const { authenticate } = require('../../../middlewares/auth');
+const { validateQuery } = require('../../../middlewares/validation');
+const listUsersQuery = require('../../../validation/users/list');
+
+module.exports = {
+  method: 'get',
+  path: '/',
+  middleware: [authenticate, validateQuery(listUsersQuery)],
+  handler: async (req, res) => {
+    const { page, limit, sort, search } = req.validatedQuery;
+    // ...
+    res.json({ success: true, traceId: req.id, data: results });
+  },
+  docs: { summary: 'List users', tags: ['Users'] }
+};
+```
+
+**What happens automatically:**
+- `req.query` is validated against the Joi schema with `allowUnknown: true` (extra params pass through)
+- Cleaned values land in `req.validatedQuery`
+- The Swagger auto-loader detects `_queryValidationSchema` on the middleware and generates OpenAPI `parameters` with `in: 'query'`
+
+---
+
+## 5. Creating a Controller
+
+Located in `src/controllers/`. Controllers handle **request/response** only — no business logic.
+
+```js
+// src/controllers/user.controller.js
+const getProfile = async (req, res, next) => {
+  try {
+    const service = req.getService('userService');
+    const user = await service.getProfile(req.user.id);
+    return res.status(200).json({ success: true, traceId: req.id, data: user });
+  } catch (err) { next(err); }
+};
+
+const listUsers = async (req, res, next) => {
+  try {
+    const service = req.getService('userService');
+    const result = await service.listUsers(req.validatedQuery);
+    return res.status(200).json({ success: true, traceId: req.id, data: result });
+  } catch (err) { next(err); }
+};
+
+module.exports = { getProfile, listUsers };
+```
+
+**Conventions:**
+- Get services via `req.getService('serviceName')`
+- Read validated body from `req.validatedBody`, query from `req.validatedQuery`
+- Include `traceId: req.id` in every response
+- Wrap in try/catch, pass errors to `next(err)`
+- Never put business logic here
+
+---
+
+## 6. Creating a Service
+
+Located in `src/services/`. A service encapsulates **business logic** and depends on repositories or other services via constructor injection.
+
+```js
 const NotFoundError = require('../errors/NotFoundError');
 
 class UserService {
@@ -86,87 +239,6 @@ class UserService {
 module.exports = UserService;
 ```
 
-### Step 4 — Controller (`src/controllers/`)
-
-```js
-// src/controllers/user.controller.js
-const getProfile = async (req, res, next) => {
-  try {
-    const userService = req.getService('userService');
-    const { userId } = req.validatedBody;
-    const user = await userService.getProfile(userId);
-    return res.status(200).json({
-      success: true,
-      traceId: req.id,
-      data: user
-    });
-  } catch (err) {
-    next(err);
-  }
-};
-
-module.exports = { getProfile };
-```
-
-### Step 5 — Route (`src/routes/v1/`)
-
-Create a route definition file in the appropriate folder:
-
-```js
-// src/routes/v1/user/profile.js
-const validateMiddleware = require('../../middlewares/validation');
-const getProfileSchema = require('../../validation/user/getProfile');
-const { getProfile } = require('../../controllers/user.controller');
-
-module.exports = {
-  method: 'post',
-  path: '/profile',
-  middleware: [validateMiddleware(getProfileSchema)],
-  handler: getProfile,
-};
-```
-
-### Step 6 — Done (auto-loader)
-
-The loader picks it up automatically. `src/routes/v1/user/profile.js` → `POST /user/profile`. No manual registration needed.
-
-### Step 7 — Register Service in Container
-
-```js
-// src/services/container.js
-const UserService = require('./userService');
-// ...after existing registrations...
-const userService = new UserService({
-  userRepository: container.get('userRepository') // after you register it
-});
-container.register('userService', userService);
-```
-
----
-
-## 2. Creating a New Service
-
-Located in `src/services/`. A service encapsulates **business logic** and depends on repositories or other services via constructor injection.
-
-```js
-const ConflictError = require('../errors/ConflictError');
-
-class PaymentService {
-  constructor({ userRepository, billingRepository }) {
-    this.userRepository = userRepository;
-    this.billingRepository = billingRepository;
-  }
-
-  async processRefund(userId, amount) {
-    const user = await this.userRepository.findById(userId);
-    if (!user) throw new NotFoundError('User not found');
-    return this.billingRepository.refund(userId, amount);
-  }
-}
-
-module.exports = PaymentService;
-```
-
 **Rules:**
 - Never import `req` or `res` — services are transport-agnostic
 - Never call `new` on dependencies — receive them via constructor
@@ -175,129 +247,105 @@ module.exports = PaymentService;
 
 ---
 
-## 3. Creating a New Route
-
-Located in `src/routes/v1/`. Each route file defines an Express router with middleware chains.
-
-```js
-const router = require('express').Router();
-const validateMiddleware = require('../../middlewares/validation'); 
-const mySchema = require('../../validation/myFeature/schema');
-const { myHandler } = require('../../controllers/my.controller');
-
-router.get('/resource', myHandler);
-router.post('/resource', [validateMiddleware(mySchema)], myHandler);
-
-module.exports = router;
-```
-
-No manual mounting — the `src/routes/v1/index.js` auto-loader picks up any `.js` file in `src/routes/v1/` by filename convention:
-
-- `myRoutes.js` → mounted at `/my-routes`
-- `user.js` → mounted at `/user`
-
-For a custom mount path, export `{ router, path }`:
-```js
-module.exports = { router, path: '/custom-path' };
-```
-
-For non-versioned routes, add directly to `src/routes/index.js`:
-
-```js
-router.use('/webhook', webhookRoutes); // before the fallback
-```
-
----
-
-## 4. Creating a New Controller
-
-Located in `src/controllers/`. Controllers handle **request/response** only — no business logic.
-
-```js
-const listAll = async (req, res, next) => {
-  try {
-    const service = req.getService('myService');
-    const result = await service.listAll();
-    return res.status(200).json({
-      success: true,
-      traceId: req.id,
-      data: result
-    });
-  } catch (err) {
-    next(err);
-  }
-};
-
-module.exports = { listAll };
-```
-
-**Conventions:**
-- Get services via `req.getService('serviceName')`
-- Read validated input from `req.validatedBody`
-- Include `traceId: req.id` in every response
-- Wrap in try/catch, pass errors to `next(err)`
-- Never put business logic here
-
----
-
-## 5. Creating a New Repository
+## 7. Creating a Repository
 
 Located in `src/repositories/`. Repositories abstract **data access** behind a clean interface.
 
 ```js
-const User = require('../models/User');
-
 class UserRepository {
-  async findActive(limit = 10) {
-    return await User.find({ active: true }).limit(limit);
+  constructor({ dbStrategy }) {
+    this.dbStrategy = dbStrategy;
   }
 
-  async updateLastLogin(userId) {
-    return await User.findByIdAndUpdate(userId, { lastLogin: new Date() });
+  async findById(id) {
+    return this.dbStrategy.findById('User', id);
+  }
+
+  async findByEmail(email) {
+    return this.dbStrategy.findOne('User', { email });
   }
 }
 ```
 
 **Rules:**
+- Use the injected `dbStrategy` — never call Mongoose directly
 - Return plain data, never `req`/`res`
 - Methods return Promises (async)
-- Keep Mongoose-specific calls inside the repository only
 
 ---
 
-## 6. Creating a New Validation Schema
+## 8. Creating a Validation Schema
 
 Located in `src/validation/`. Group by feature in subdirectories.
 
 ```js
 const Joi = require('joi');
-
 const UpdateProfileSchema = Joi.object({
   name: Joi.string().trim().min(2).max(50),
-  bio: Joi.string().trim().max(500).optional(),
-  avatar: Joi.string().uri().optional()
+  bio:  Joi.string().trim().max(500).optional(),
 });
-
 module.exports = UpdateProfileSchema;
 ```
 
 **Notes:**
 - Use `.trim()` on all string fields
-- Use `abortEarly: false` is set by the validation middleware, so all errors are collected
+- `abortEarly: false` is set by the middleware, so all errors are collected
 - Schemas auto-convert to Swagger via `joi-to-swagger`
 
 ---
 
-## 7. Applying Per-Route Rate Limiting
+## 9. Creating a New Model
+
+Simply create a new file in `src/models/`:
+
+```js
+// src/models/Product.js
+const mongoose = require('mongoose');
+const productSchema = new mongoose.Schema({
+  name:  { type: String, required: true },
+  price: { type: Number, required: true },
+});
+module.exports = mongoose.model('Product', productSchema);
+```
+
+The bootstrap auto-loader (`loadModels.js`) picks it up automatically at startup and converts it to an OpenAPI schema via `mongoose-to-swagger`.
+
+---
+
+## 10. Registering in the Container
+
+Edit `src/services/container.js`. Follow the existing registration order:
+
+```js
+// 1. Strategies first (driver-based selection)
+const dbStrategy = { mongo: MongoStrategy, postgres: PostgresStrategy }[config.database.driver];
+
+// 2. Repositories
+const userRepo = new UserRepository({ dbStrategy });
+
+// 3. Services
+const userService = new UserService({ userRepository: userRepo });
+
+// 4. Register by name
+container.register('dbStrategy', dbStrategy);
+container.register('userRepository', userRepo);
+container.register('userService', userService);
+```
+
+**Dependency order matters** — if Service A depends on Service B, register B first.
+
+---
+
+## 11. Applying Per-Route Rate Limiting
 
 Use the `createRateLimiter` factory in your route file:
 
 ```js
-const createRateLimiter = require('../../middlewares/rateLimiter');
-
+const createRateLimiter = require('../../../middlewares/rateLimiter');
 const strictLimiter = createRateLimiter({ windowMs: 60 * 1000, max: 5 });
 
-router.post('/login', [strictLimiter, validate(loginSchema)], handler);
+// In route definition:
+middleware: [strictLimiter, validate(loginSchema)],
 ```
 
 Available options:
@@ -310,343 +358,57 @@ Available options:
 
 ---
 
-## 8. Registering a Service in the Container
+## 12. Authenticating Routes (JWT)
 
-Edit `src/services/container.js`. Follow the existing registration order:
+The `authenticate` middleware in `src/middlewares/auth.js` protects routes:
 
 ```js
-// 1. Instantiate repositories first
-const myRepo = new MyRepository();
+const { authenticate } = require('../../../middlewares/auth');
 
-// 2. Instantiate services with their dependencies
-const myService = new MyService({
-  myRepo: myRepo,
-  otherService: container.get('otherService')
-});
-
-// 3. Register by name
-container.register('myService', myService);
+// In route definition:
+middleware: [authenticate],
 ```
 
-**Dependency order matters** — if Service A depends on Service B, register B first.
+**How it works:**
+- Checks `Authorization: Bearer <token>` header, then falls back to the `token` cookie
+- On success: sets `req.user = { id, email, role }`
+- On failure: passes `UnauthorizedError` to error handler
 
----
+**Swagger auto-detection:** Routes using `authenticate` automatically get `security: [{ bearerAuth: [] }, { cookieAuth: [] }]` in their OpenAPI spec.
 
-## 9. Adding a Custom Error
-
-Create a new file in `src/errors/`:
-
-```js
-const AppError = require('./appErrors');
-
-class ForbiddenError extends AppError {
-  constructor(message) {
-    super(message, 403);
-  }
-}
-
-module.exports = ForbiddenError;
-```
-
-The `AppError` base class will automatically:
-- Look up the default message from `HTTP_REQUESTS` (add your status code there too if needed)
-- Set `status: 'fail'` for 4xx, `'error'` for 5xx
-- Mark `isOperational = true` for the error handler
-
-Then throw it from any service:
+**Accessing the user in a controller:**
 
 ```js
-throw new ForbiddenError('Only admins can delete resources');
+const userId = req.user.id;
+const userRole = req.user.role;
 ```
 
 ---
 
-## 10. Using the Logger
+## 13. Role-Based Authorization
 
-The Winston logger is at `src/utils/logger.js` and provides 5 levels:
+Use the `authorize` middleware after `authenticate`:
 
 ```js
-const logger = require('../utils/logger');
+const { authenticate } = require('../../../middlewares/auth');
+const { authorize } = require('../../../middlewares/authorize');
 
-logger.error('Something broke', { stack: err.stack });
-logger.warn('Rate limit approaching', { ip: req.ip });
-logger.info('User registered', { userId: user.id });
-logger.http('GET /health 200 5ms');
-logger.debug('Query result', { rows: result.length });
+// Single role:
+middleware: [authenticate, authorize('admin')]
+
+// Multiple roles:
+middleware: [authenticate, authorize(['admin', 'moderator'])]
 ```
 
-**Log files** (in `storage/logs/`):
-
-| File | Level |
-|---|---|
-| `error.log` | `error` only |
-| `warning.log` | `warn` and above |
-| `app.log` | `info` and above |
-
-In development, the console shows all levels with colors. In production, only `warn`+ shows on console.
+Returns `403 ForbiddenError` if the user's role is not in the allowed list.
 
 ---
 
-## 11. Working with Environment Variables
+## 14. Exposing in Swagger
 
-> **Note**: The next section (Implementing a Strategy Backend) is numbered 12 below.
-
-### Adding a new env var
-
-1. Add to all `.env.*` files with appropriate values:
-
-```ini
-# .env.development
-SMTP_HOST=smtp.mailtrap.io
-SMTP_PORT=2525
-
-# .env.production
-SMTP_HOST=smtp.sendgrid.net
-SMTP_PORT=587
-```
-
-2. Load it in `src/config/environment.js`:
+Swagger docs are auto-generated from route files. Add a `docs` property:
 
 ```js
-module.exports = {
-  // ...existing config...
-  smtp: {
-    host: process.env.SMTP_HOST,
-    port: parseInt(process.env.SMTP_PORT, 10) || 587,
-  }
-};
-```
-
-3. Add to the production validation check if critical:
-
-```js
-if (envType === 'production') {
-  const criticalKeys = ['PORT', 'MONGO_URI', 'JWT_SECRET', 'CORS_ORIGIN', 'SMTP_HOST'];
-  // ...
-}
-```
-
----
-
-## 12. Implementing a Strategy Backend
-
-Strategy files are in `src/strategies/`. Each domain has a directory with interchangeable implementations.
-
-### Existing Strategies
-
-| Directory | Implemented | Stub |
-|---|---|---|
-| `database/` | `mongo.strategy.js` — Full Mongoose wrapper (`create`, `findById`, `findOne`, `find`, `update`, `delete`, `count`) | `postgres.strategy.js` — Same interface, throws not-implemented |
-| `storage/` | `localStorage.strategy.js` — Full filesystem storage (`upload`, `delete`, `getUrl`) | `s3Storage.strategy.js` — Same interface, throws not-implemented |
-
-**How the database strategy works with repositories:**
-
-```js
-// src/repositories/user.repository.js
-class UserRepository {
-  constructor({ dbStrategy }) {
-    this.dbStrategy = dbStrategy;  // injected by container
-  }
-
-  async findByEmail(email) {
-    return this.dbStrategy.findOne('User', { email });
-  }
-}
-```
-
-The `dbStrategy` is resolved in `container.js` based on config:
-```js
-const dbStrategy = config.database.driver === 'postgres'
-  ? new PostgresStrategy()
-  : new MongoStrategy();
-container.register('dbStrategy', dbStrategy);
-```
-
-### Adding a new strategy
-
-**Example — Email strategy:**
-
-```js
-// src/strategies/email/smtp.strategy.js
-class SmtpStrategy {
-  async send(to, subject, body) {
-    // Transporter-specific logic
-  }
-}
-```
-
-```js
-// src/strategies/email/sendgrid.strategy.js
-class SendGridStrategy {
-  async send(to, subject, body) {
-    // SendGrid-specific logic
-  }
-}
-```
-
-**Selection at registration:**
-
-```js
-// src/services/container.js
-const EmailStrategy = config.email.provider === 'sendgrid'
-  ? new SendGridStrategy()
-  : new SmtpStrategy();
-const emailService = new EmailService({ strategy: EmailStrategy });
-container.register('emailService', emailService);
-```
-
-**Rules for implementing a strategy:**
-- All implementations of the same domain must share the same method signatures
-- Methods should be `async` and return Promises
-- Configuration (connection strings, credentials) should come from `config` (environment variables), never hardcoded
-- Store incoming configuration in `this.config` during construction
-
----
-
-## 13. Authenticating Routes (JWT Middleware)
-
-The `authenticate` middleware in `src/middlewares/auth.js` protects routes with JWT verification.
-
-### How it works
-
-```js
-// Middleware checks for Authorization: Bearer <token>
-// On success: attaches req.user = { id, email }
-// On failure: passes UnauthorizedError to errorHandler
-```
-
-### Protecting a route
-
-```js
-// src/routes/v1/user.js
-const router = require('express').Router();
-const { authenticate } = require('../../middlewares/auth');
-const { getProfile } = require('../../controllers/user.controller');
-
-// Protect with auth
-router.get('/profile', authenticate, getProfile);
-```
-
-### Accessing the authenticated user in a controller
-
-```js
-const getProfile = async (req, res, next) => {
-  try {
-    // req.user is set by authenticate middleware
-    const userId = req.user.id;
-    const userService = req.getService('userService');
-    const user = await userService.getProfile(userId);
-    return res.status(200).json({ success: true, traceId: req.id, data: user });
-  } catch (err) {
-    next(err);
-  }
-};
-```
-
-### Used in refresh token flow
-
-The `POST /auth/refresh-token` endpoint does **not** require the `authenticate` middleware — it uses the `refreshToken` from the request body instead of a Bearer token. This allows clients to get a new token pair after the access token has expired.
-
----
-
-## 14. Using the Route Auto-Loader
-
-`src/routes/v1/loader.js` recursively scans `src/routes/v1/` and builds an Express router from folder-based route definition files.
-
-### How it works
-
-Each route file exports a config object:
-
-```js
-// src/routes/v1/user/profile.js
-module.exports = {
-  method: 'get',
-  path: '/profile',
-  middleware: [authenticate],
-  handler: getProfile,
-};
-```
-
-The loader recursively walks directories and registers every definition:
-- `src/routes/v1/auth/login.js` → `POST /auth/login`
-- `src/routes/v1/user/profile.js` → `GET /user/profile`
-
-### Adding a new route group
-
-Create a directory + file in `src/routes/v1/`:
-
-```js
-// src/routes/v1/payment/webhook.js
-const stripeWebhook = require('../../../controllers/payment.controller').webhook;
-
-module.exports = {
-  method: 'post',
-  path: '/webhook',
-  handler: stripeWebhook,
-};
-```
-
-This registers `POST /payment/webhook` — no manual wiring needed.
-
-### For parameterized routes
-
-```js
-module.exports = {
-  method: 'get',
-  path: '/:id',
-  middleware: [authenticate],
-  handler: getUserById,
-};
-```
-
----
-
-## 15. Using the Model Auto-Loader
-
-`src/models/index.js` automatically discovers and registers all Mongoose models in `src/models/`.
-
-### How it works
-
-At startup (in `container.js`):
-```js
-require('../models/index');  // Auto-loads all models
-```
-
-This scans `src/models/` for `.js` files (excluding `index.js`) and `require()`s each one. Since each model file calls `mongoose.model('Name', schema)`, they're all registered globally before any repository uses them.
-
-### Adding a new model
-
-Simply create a new file in `src/models/`:
-
-```js
-// src/models/Product.js
-const mongoose = require('mongoose');
-
-const productSchema = new mongoose.Schema({
-  name:  { type: String, required: true },
-  price: { type: Number, required: true },
-});
-
-module.exports = mongoose.model('Product', productSchema);
-```
-
-**No manual registration needed** — the auto-loader picks it up. Use it in any repository via `mongoose.model('Product')` or through the `dbStrategy`:
-
-```js
-// Inside a strategy
-async findById(modelName, id) {
-  return mongoose.model(modelName).findById(id);
-}
-```
-
----
-
-## 16. Exposing an Endpoint in Swagger
-
-Swagger docs are auto-generated from route files. Add a `docs` property to your route definition:
-
-```js
-// src/routes/v1/user/profile.js
 module.exports = {
   method: 'get',
   path: '/profile',
@@ -655,57 +417,104 @@ module.exports = {
   docs: {
     tags: ['Users'],
     summary: 'Get user profile',
-    description: 'Returns the authenticated user profile.',
     responses: {
-      200: {
-        description: 'User profile returned successfully',
-        content: {
-          'application/json': {
-            schema: {
-              type: 'object',
-              properties: {
-                success: { type: 'boolean', example: true },
-                traceId: { type: 'string', example: '6e256651' },
-                data: { $ref: '#/components/schemas/UserResponse' }
-              }
-            }
-          }
-        }
-      },
+      200: { description: 'User profile returned', content: { 'application/json': { schema: { type: 'object' } } } },
       401: { $ref: '#/components/responses/UnauthorizedError' },
-      500: { $ref: '#/components/responses/InternalServerError' }
     }
   }
 };
 ```
 
-That's it — the swagger loader picks it up automatically. No manual imports in `swagger/index.js`.
+**Auto-detection features** (no manual `docs` needed for these):
+- Joi body schema on middleware `_validationSchema` → generates `requestBody`
+- Joi query schema on middleware `_queryValidationSchema` → generates `parameters`
+- `authenticate` middleware → adds `security`
+- `:id` in path → adds path `parameters`
+- Missing `responses` field → defaults to `400` + `500` refs
 
-### Manual path overrides (advanced)
+The tag is derived from the first URL segment (`/auth/login` → `Auth`).
 
-For complex cases, pass `manualPaths` to `generatePaths` in `swagger/index.js`:
+---
+
+## 15. Implementing a Strategy Backend
+
+Strategy files are in `src/strategies/`. Each domain has interchangeable implementations.
+
+### Existing Strategies
+
+| Directory | Implemented | Also Available |
+|---|---|---|
+| `database/` | `mongo.strategy.js` — Full Mongoose wrapper | `postgres.strategy.js` — Full PG via lazy `pg.Pool` |
+| `storage/` | `localStorage.strategy.js` — Full filesystem | `s3Storage.strategy.js` — Full S3 via lazy `@aws-sdk/client-s3` |
+| `email/` | `consoleEmail.strategy.js` — Logs to console | `stubEmail.strategy.js` — Throws (placeholder) |
+
+### Adding a new strategy
 
 ```js
-const { generatePaths } = require('./loader');
-
-const manualPaths = {
-  '/legacy/endpoint': {
-    get: { tags: ['Legacy'], summary: 'Old endpoint', responses: { 200: { description: 'OK' } } }
+// src/strategies/email/smtp.strategy.js
+class SmtpStrategy {
+  async send(to, subject, body) {
+    // nodemailer logic here
   }
-};
-
-module.exports = {
-  // ...
-  paths: generatePaths({ manualPaths }),
-  // ...
-};
+}
 ```
 
-### Schema references
+**Registration** (in `container.js`):
 
-For request/response schemas referenced in your `docs`:
-- Define them in `src/routes/swagger/schemas/`
-- Or auto-generate from Joi via `joi-to-swagger` in `src/routes/swagger/components/index.js`
+```js
+const EmailStrategy = { console: ConsoleEmailStrategy, smtp: SmtpStrategy }[config.email.driver];
+container.register('emailStrategy', new EmailStrategy());
+```
+
+**Rules:**
+- All implementations of the same domain must share the same method signatures
+- Methods should be `async` and return Promises
+- Configuration comes from `config` (environment), never hardcoded
+
+PostgresStrategy and S3StorageStrategy use **lazy `require()`** inside their methods so their optional dependencies (`pg`, `@aws-sdk/client-s3`) don't break imports when not installed.
+
+---
+
+## 16. Configuration Reference
+
+### Environment Variables
+
+| Variable | Default | Description |
+|---|---|---|
+| `NODE_ENV` | `development` | Runtime environment |
+| `ROUTE_PREFIX` | `/api/v1` | API route prefix (folder + mount point) |
+| `PORT` | `3000` | HTTP server port |
+| `BODY_LIMIT` | `1mb` | Max JSON request body size |
+| `MONGO_URI` | `mongodb://localhost:27017/myapp_dev` | MongoDB connection string |
+| `BCRPT_SALT_SIZE` | `12` | Bcrypt salt rounds |
+| `JWT_SECRET` | — | JWT signing secret |
+| `JWT_EXPIRES_IN` | `15m` | Access token expiry |
+| `JWT_REFRESH_SECRET` | — | Refresh token secret |
+| `JWT_REFRESH_EXPIRES_IN` | `7d` | Refresh token expiry |
+| `JWT_RESET_EXPIRES_IN` | `15m` | Reset-password token expiry |
+| `CORS_ORIGIN` | `*` | Allowed CORS origin |
+| `RATE_LIMIT_MAX` | `100` | Max requests per rate-limit window |
+| `DB_DRIVER` | `mongo` | Database strategy (`mongo` or `postgres`) |
+| `STORAGE_DRIVER` | `local` | Storage strategy (`local` or `s3`) |
+| `EMAIL_DRIVER` | `console` | Email strategy (`console` or `stub`) |
+
+### System Config (`src/config/system.js`)
+
+| Key | Description |
+|---|---|
+| `MIDDLEWARE_PIPELINE` | Ordered array of middleware keys applied globally |
+| `SWAGGER_CONFIG` | `{ title, version, description }` for OpenAPI info |
+| `PERF_MONITOR_CONFIG` | `{ metricsEndpoint, trackRoutes, histogramBuckets }` |
+| `SECURITY_DEFAULTS` | Rate-limit defaults, CORS methods/headers |
+| `HTTP_REQUESTS` | Status code → `{ status, message, log }` lookup |
+
+### Middleware Pipeline (default order)
+
+```
+favicon → helmet → cors → cookieParser → json → rateLimiter → perfMonitor → tracer → injectServices → routes → errorHandler
+```
+
+Edit `MIDDLEWARE_PIPELINE` in `src/config/system.js` to reorder or omit middleware. Add new keys by registering in `middlewareMap` in `src/bootstrap/index.js`.
 
 ---
 
@@ -713,39 +522,23 @@ For request/response schemas referenced in your `docs`:
 
 Tests live in `src/tests/` and use Jest.
 
-```js
-// src/tests/auth.service.test.js
-const AuthService = require('../services/authService');
-
-describe('AuthService', () => {
-  let authService;
-  let mockRepo;
-
-  beforeEach(() => {
-    mockRepo = { findByEmail: jest.fn(), create: jest.fn() };
-    const mockSec = { hashPassword: jest.fn(() => 'hashed') };
-    authService = new AuthService({
-      userRepository: mockRepo,
-      securityService: mockSec
-    });
-  });
-
-  it('should throw ConflictError when email already exists', async () => {
-    mockRepo.findByEmail.mockResolvedValue({ email: 'test@test.com' });
-    await expect(authService.registerUser({ email: 'test@test.com' }))
-      .rejects.toThrow('Email already registered');
-  });
-});
-```
-
-**Because of DI**, services are trivial to test — just inject mocks.
-
-Run tests:
-
 ```bash
-npm test                          # local
+npm test                          # local (85+ tests)
 ./command/test.sh                 # Docker
 ```
+
+**Key test files:**
+
+| File | Tests | What it covers |
+|---|---|---|
+| `auth.int.test.js` | 25 | Register, login, refresh, forgot/reset password, auth-me |
+| `auth.middleware.test.js` | 10 | Authenticate + authorize middleware |
+| `dynamic-routes.test.js` | 7 | Path params, query validation |
+| `strategies.test.js` | 20 | Mongo, Postgres, LocalStorage, S3Storage |
+| `rateLimiter.test.js` | — | Rate limiter factory |
+| `security.repository.test.js` | — | JWT sign/verify, bcrypt |
+
+**Because of DI**, services are trivial to test — just inject mocks.
 
 ---
 
@@ -754,17 +547,19 @@ npm test                          # local
 | Concern | Location | Responsibility |
 |---|---|---|
 | HTTP handling | `controllers/` | Parse request, call service, send response |
-| Business logic | `services/` | Rules, orchestration, validation logic |
-| Data access | `repositories/` | Database queries, ORM calls |
+| Business logic | `services/` | Rules, orchestration, validation |
+| Data access | `repositories/` | Database queries via injected strategy |
 | Validation | `validation/` | Joi schema definitions |
-| Cross-cutting | `middlewares/` | Tracing, DI injection, error handling |
+| Cross-cutting | `middlewares/` | Auth, tracing, DI injection, error handling |
 | Error types | `errors/` | Typed operational errors |
-| Configuration | `config/` | Environment loading, security setup |
-| Swagger | `routes/swagger/` | OpenAPI spec generation |
+| Configuration | `config/` | Environment loading, system defaults |
+| Swagger | `swagger/components/` | Security schemes, shared responses |
+| Bootstrap | `bootstrap/` | Auto-loaders, Express app assembly |
 
 **Golden rules:**
 - Controllers never call `new` — use `req.getService()`
 - Services never touch `req` or `res`
 - Repositories never contain business logic
 - Errors are always typed and thrown, never plain `new Error()`
-- Every public method is documented with JSDoc
+- Route files export `{ method, path, middleware, handler }` — no manual registration
+- Every public method has JSDoc

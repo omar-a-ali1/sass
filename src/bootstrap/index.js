@@ -52,8 +52,10 @@ const middlewareMap = {
   favicon: favicon(path.join(__dirname, '..', '..', 'assets', 'favicon.ico')),
   helmet: helmetConfig,
   cors: cors(corsOptions),
-  json: express.json(),
+  cookieParser: require('cookie-parser'),
+  json: express.json({ limit: config.bodyLimit }),
   rateLimiter,
+  perfMonitor: require('../middlewares/perfMonitor').perfMonitor,
   tracer: require('../middlewares/tracer'),
   injectServices: require('../middlewares/injectServices'),
 };

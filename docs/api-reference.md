@@ -1,29 +1,24 @@
 # SASS Framework — Complete API & Function Reference
 
-> **S**calable **A**rchitecture for **S**erver-side **S**ystems
-
 ---
 
 ## Table of Contents
 
 1. [Entry Points](#1-entry-points)
-2. [Config Layer](#2-config-layer)
-3. [Constants](#3-constants)
+2. [Bootstrap Layer](#2-bootstrap-layer)
+3. [Config Layer](#3-config-layer)
 4. [Controllers](#4-controllers)
 5. [Error Hierarchy](#5-error-hierarchy)
-6. [Helpers](#6-helpers)
-   - [formatJoiErrors](#srchelpersformatjoierrorsjs--joi-error-formatter)
-   - [sanitizeData](#srchelperssanitizedatajs--data-sanitizer)
-7. [Middleware Pipeline](#7-middleware-pipeline)
-8. [Models](#8-models)
-9. [Repositories](#9-repositories)
-10. [Routes](#10-routes)
-11. [Services (IoC Container + Business Logic)](#11-services)
-12. [Strategies (Planned)](#12-strategies)
+6. [Middleware Pipeline](#6-middleware-pipeline)
+7. [Models](#7-models)
+8. [Repositories](#8-repositories)
+9. [Routes](#9-routes)
+10. [Services (IoC Container)](#10-services)
+11. [Strategies](#11-strategies)
+12. [Swagger / OpenAPI](#12-swagger--openapi)
 13. [Utils](#13-utils)
 14. [Validation Schemas](#14-validation-schemas)
-15. [Swagger / OpenAPI](#15-swagger--openapi)
-16. [Tests](#16-tests)
+15. [Tests](#15-tests)
 
 ---
 
@@ -43,105 +38,191 @@
 
 ### `src/app.js` — Express App Assembly
 
-**Purpose**: Creates and configures the Express application with global middleware in order.
-
-**Middleware registration order**:
-1. `express.json()` — Body parsing
-2. `tracer` — Request ID assignment + Morgan HTTP logging
-3. `injectServices` — Attaches IoC container to request
-4. `routes` — All route definitions
-5. `errorHandler` — Global error handler (must be last)
+**Purpose**: Thin re-export of the bootstrapped application from `src/bootstrap/index.js`.
 
 ---
 
-## 2. Config Layer
+## 2. Bootstrap Layer
 
-### `src/config/environment.js` — Environment Configuration
+### `src/bootstrap/index.js` — Bootstrap Orchestrator
 
-**Purpose**: Loads `.env.{NODE_ENV}` file via dotenv with `override: true`. In production, validates that critical env vars exist. Exports a typed config object.
+**Purpose**: Central orchestrator that wires the entire framework:
 
-| Export | Type | Description |
+1. Auto-loads Mongoose models via `loadModels.js`
+2. Initializes the IoC container (strategies → repos → services)
+3. Auto-builds the API router via `loadRoutes.js`
+4. Auto-generates Swagger doc via `loadSwagger.js`
+5. Creates Express app with **configurable middleware pipeline**
+6. Mounts routes and error handler
+
+**Middleware pipeline**: Iterates `MIDDLEWARE_PIPELINE` array from config, looks up each key in `middlewareMap`, calls `app.use()` in order.
+
+| Pipeline key | Source | Purpose |
 |---|---|---|
-| `env` | `string` | Current NODE_ENV (default: `'development'`) |
-| `port` | `number` | HTTP server port (default: `3000`) |
-| `database.uri` | `string` | MongoDB connection URI (default: `'mongodb://localhost:27017/myapp_dev'`) |
-| `bcrypt.salt` | `number` | Bcrypt salt rounds parsed from `BCRPT_SALT_SIZE` |
-| `jwt.secret` | `string` | JWT signing secret |
-| `jwt.expiresIn` | `string` | JWT token expiry (default: `'15m'`) |
-| `jwt.refreshSecret` | `string` | JWT refresh token secret |
-| `jwt.refreshExpiresIn` | `string` | JWT refresh token expiry (default: `'7d'`) |
-| `cors.origin` | `string` | Allowed CORS origin (default: `'*'`) |
-| `rateLimit.max` | `number\|null` | Max requests per window |
+| `favicon` | `serve-favicon` | Serves favicon |
+| `helmet` | `helmet()` | Security headers |
+| `cors` | `cors(corsOptions)` | CORS |
+| `cookieParser` | `utils/cookieParser` | Parse `Cookie` header → `req.cookies` |
+| `json` | `express.json({ limit })` | Body parsing with configurable size limit |
+| `rateLimiter` | `express-rate-limit` | Global rate limiter |
+| `perfMonitor` | `middlewares/perfMonitor` | Response time tracking, metrics collection |
+| `tracer` | `middlewares/tracer` | Request ID + Morgan HTTP logging |
+| `injectServices` | `middlewares/injectServices` | Attaches IoC container to `req` |
 
-### `src/config/database.js` — MongoDB Connection
+**Route mounts**: `/` (welcome), `/api-docs` (Swagger UI), `/health`, `routePrefix` (API), fallback (404).
 
-**Purpose**: Connects to MongoDB using Mongoose.
-
-| Function | Description |
-|---|---|
-| `connectDB()` | Calls `mongoose.connect(env.database.uri)`. On success logs `Database connection established successfully.`. On failure logs error and calls `process.exit(1)`. |
-
-### `src/config/security.js` — Security Middleware Configuration
-
-**Purpose**: Configures helmet, express-rate-limit, and CORS options.
+### `src/bootstrap/loadModels.js` — Model Auto-Loader
 
 | Export | Description |
 |---|---|
-| `helmetConfig` | Pre-configured `helmet()` middleware |
-| `rateLimiter` | `express-rate-limit` instance with 15-minute window, max from env or 100 default |
-| `corsOptions` | `{ origin, methods, allowedHeaders }` using SECURITY_DEFAULTS and env config |
+| `models` | Array of loaded Mongoose model names |
+| `modelSchemas` | Object of OpenAPI schemas auto-generated from Mongoose models via `mongoose-to-swagger` |
+
+Scans `src/models/` for `.js` files, `require()`s each one. Each model's `mongoose.model()` call registers it globally.
+
+### `src/bootstrap/loadRoutes.js` — Route Auto-Loader
+
+| Export | Description |
+|---|---|
+| `collectRoutes(dir, basePath)` | Recursively scans directory, collects route definitions into an array |
+| `buildRouter(dir)` | Calls `collectRoutes` and registers each definition on an Express Router |
+| `Router` | Pre-built router (auto-loaded at import time) |
+| `routePrefix` | Resolved from config (`ROUTE_PREFIX` env var, default `/api/v1`) |
+
+**Route definition discovery**: Each file must export `{ method, path, middleware, handler }`. The loader:
+- Reads the directory path as the URL base
+- Appends `path` from the export
+- Supports `:id` style path params
+- Auto-detects `_validationSchema` (body) and `_queryValidationSchema` (query) on middleware
+
+Scan dir: `routes/{routePrefix}` — mirrors the mount point.
+
+### `src/bootstrap/loadSwagger.js` — Swagger Auto-Generator
+
+| Export | Description |
+|---|---|
+| `generatePaths(options)` | Scans route files, builds OpenAPI paths object |
+
+**Auto-detection features:**
+
+| Feature | Detection | Output |
+|---|---|---|
+| Body schema | `middleware[i]._validationSchema` | `requestBody` with `application/json` |
+| Query schema | `middleware[i]._queryValidationSchema` | `parameters` with `in: query` |
+| Auth | `middleware[i].name === 'authenticate'` | `security: [{ bearerAuth: [] }, { cookieAuth: [] }]` |
+| Path params | `:param` in route path | `parameters` with `in: path` |
+| Tag | First URL segment | e.g. `/auth/login` → `Auth` |
+| Default responses | No `docs.responses` | `400` + `500` refs |
+
+Converts `:param` to `{param}` in OpenAPI path keys (e.g. `/users/:id` → `/users/{id}`).
 
 ---
 
-## 3. Constants
+## 3. Config Layer
 
-### `src/constants/system.js` — System Constants
+### `src/config/environment.js` — Environment Configuration
+
+| Export | Type | Default | Description |
+|---|---|---|---|
+| `env` | `string` | `'development'` | Current NODE_ENV |
+| `routePrefix` | `string` | `'/api/v1'` | API route prefix |
+| `port` | `number` | `3000` | HTTP server port |
+| `bodyLimit` | `string` | `'1mb'` | Max JSON body size |
+| `database.uri` | `string` | `'mongodb://localhost:27017/myapp_dev'` | MongoDB URI |
+| `bcrypt.salt` | `number` | parsed from `BCRPT_SALT_SIZE` | Bcrypt salt rounds |
+| `jwt.secret` | `string` | — | JWT signing secret |
+| `jwt.expiresIn` | `string` | `'15m'` | Access token expiry |
+| `jwt.refreshSecret` | `string` | — | Refresh token secret |
+| `jwt.refreshExpiresIn` | `string` | `'7d'` | Refresh token expiry |
+| `jwt.resetExpiresIn` | `string` | `'15m'` | Reset-password token expiry |
+| `cors.origin` | `string` | `'*'` | Allowed CORS origin |
+| `rateLimit.max` | `number` | `null` | Max requests per window |
+| `email.driver` | `string` | `'console'` | Email strategy |
+| `storage.driver` | `string` | `'local'` | Storage strategy |
+| `storage.uploadDir` | `string` | `'storage/uploads'` | Local upload path |
+
+### `src/config/system.js` — System Constants
+
+#### `MIDDLEWARE_PIPELINE`
+Ordered array of middleware keys applied globally:
+```js
+['favicon', 'helmet', 'cors', 'cookieParser', 'json', 'rateLimiter', 'perfMonitor', 'tracer', 'injectServices']
+```
+
+#### `SWAGGER_CONFIG`
+```js
+{ title: 'SaaS Framework Custom Engine Architecture', version: '1.0.0', description: '...' }
+```
+
+#### `PERF_MONITOR_CONFIG`
+```js
+{ metricsEndpoint: true, trackRoutes: true, histogramBuckets: [5, 10, 25, 50, 100, ...] }
+```
 
 #### `SECURITY_DEFAULTS`
-
-| Key | Value | Description |
-|---|---|---|
-| `RATE_LIMIT_WINDOW_MS` | `900000` (15 min) | Rate limit time window |
-| `RATE_LIMIT_MAX_REQUESTS` | `100` | Default max requests |
-| `CORS_METHODS` | `['GET','POST','PUT','DELETE','PATCH']` | Allowed HTTP methods |
-| `CORS_ALLOWED_HEADERS` | `['Content-Type','Authorization','X-Request-ID']` | Allowed headers |
+| Key | Value |
+|---|---|
+| `RATE_LIMIT_WINDOW_MS` | `900000` (15 min) |
+| `RATE_LIMIT_MAX_REQUESTS` | `100` |
+| `CORS_METHODS` | `['GET','POST','PUT','DELETE','PATCH']` |
+| `CORS_ALLOWED_HEADERS` | `['Content-Type','Authorization','X-Request-ID']` |
 
 #### `HTTP_REQUESTS` — Status Code Lookup Table
-
-A dictionary mapping HTTP status codes to `{ status, message, log }`:
 
 | Code | Status | Message |
 |---|---|---|
 | 200 | `success` | The request has succeeded. |
 | 201 | `success` | Resource created successfully. |
 | 204 | `success` | Operation completed successfully. |
-| 300 | `redirect` | Multiple choices available. |
-| 301 | `redirect` | The resource has been moved permanently. |
 | 400 | `fail` | The data provided is invalid or corrupted. |
-| 401 | `fail` | Authentication is required to access this resource. |
-| 403 | `fail` | You do not have permission to perform this action. |
+| 401 | `fail` | Authentication is required. |
+| 403 | `fail` | You do not have permission. |
 | 404 | `fail` | The requested resource could not be found. |
-| 409 | `fail` | A conflict occurred. The resource might already exist. |
+| 409 | `fail` | A conflict occurred. |
 | 500 | `error` | An unexpected internal server error occurred. |
 | 503 | `error` | The server is temporarily unavailable. |
+
+### `src/config/security.js` — Security Middleware Configuration
+
+| Export | Description |
+|---|---|
+| `helmetConfig` | Pre-configured `helmet()` middleware |
+| `rateLimiter` | `express-rate-limit` instance (15min window, configurable max) |
+| `corsOptions` | `{ origin, methods, allowedHeaders }` |
+
+### `src/config/database.js` — MongoDB Connection
+
+| Export | Description |
+|---|---|
+| `connectDB()` | Connects to MongoDB via `mongoose.connect()`. Exits process on failure. |
 
 ---
 
 ## 4. Controllers
 
-### `src/controllers/auth.controller.js` — Auth Request Handling
+### `src/controllers/auth.controller.js`
 
-| Function | Method | Path | Description |
-|---|---|---|---|---|
-| `login(req, res, next)` | POST | `/api/v1/auth/login` | Gets `authService` from `req.getService()`, reads `req.validatedBody`, calls `authService.loginUser()`, returns `201 { success, traceId, data: { user, accessToken, refreshToken } }`. Passes errors to `next(err)`. |
-| `register(req, res, next)` | POST | `/api/v1/auth/register` | Gets `authService` from `req.getService()`, reads `req.validatedBody`, calls `authService.registerUser()`, returns `201 { success, traceId, data }`. Passes errors to `next(err)`. |
-| `refresh(req, res, next)` | POST | `/api/v1/auth/refresh-token` | Gets `authService` from `req.getService()`, reads `req.validatedBody.refreshToken`, calls `authService.refreshToken()`, returns `200 { success, traceId, data: { accessToken, refreshToken } }`. Passes errors to `next(err)`. |
+| Function | Route | Description |
+|---|---|---|
+| `register` | `POST /auth/register` | Validated body → `authService.registerUser()` → `201 { success, traceId, data }` |
+| `login` | `POST /auth/login` | Validated body → `authService.loginUser()` → `201 { success, traceId, data: { user, accessToken, refreshToken } }` |
+| `refresh` | `POST /auth/refresh-token` | Refresh token from body/cookie → `authService.refreshToken()` → `200 { success, traceId, data: { accessToken, refreshToken } }` |
+| `forgotPassword` | `POST /auth/forgot-password` | Email → `authService.forgotPassword()` → sends reset email |
+| `resetPassword` | `POST /auth/reset-password` | Token + new password → `authService.resetPassword()` |
+| `getProfile` | `GET /auth/me` | `req.user.id` → `authService.getProfile()` → `200 { success, traceId, data: user }` |
 
-### `src/controllers/health.controller.js` — Health Check
+### `src/controllers/health.controller.js`
 
-| Function | Method | Path | Description |
-|---|---|---|---|
-| `checkHealth(req, res, next)` | GET | `/health` | Reads `NODE_ENV`, `process.uptime()`, `mongoose.connection.readyState`, `process.memoryUsage()`. Returns `200 { success, environment, status, timestamp, uptime, services: { database }, system: { memory } }`. If DB is down, returns `503 { success: false, status: 'DOWN', ... }`. |
+| Function | Route | Description |
+|---|---|---|
+| `checkHealth` | `GET /health` | Returns `{ environment, status, uptime, services: { database }, system: { memory } }`. `503` if DB down. |
+
+### `src/controllers/user.controller.js`
+
+| Function | Route | Description |
+|---|---|---|
+| `getUser` | `GET /users/:id` | `req.params.id` → `userService.getProfile()` |
+| `listUsers` | `GET /users` | `req.validatedQuery` → `userService.listUsers()` |
 
 ---
 
@@ -154,290 +235,231 @@ Error
       ├── NotFoundError       (404)
       ├── ServerError         (500)
       ├── UnauthorizedError   (401)
-      └── validationError     (400)
+      ├── ForbiddenError      (403)
+      └── ValidationError     (400)
 ```
 
 ### `src/errors/appErrors.js` — Base Error
 
 | Class | Constructor | Description |
 |---|---|---|
-| `AppError` | `(message, statusCode)` | Looks up default message from `HTTP_REQUESTS[statusCode]`. Sets `statusCode`, `status`, `isOperational = true`. Calls `Error.prepareStackTrace`. |
+| `AppError` | `(message, statusCode)` | Looks up default message from `HTTP_REQUESTS`. Sets `statusCode`, `status`, `isOperational = true`. |
 
-### Derived Errors
-
-| File | Class | Status | Description |
-|---|---|---|---|
-| `ConflictError.js` | `ConflictError` | 409 | Resource conflict (e.g., duplicate email) |
-| `NotFoundError.js` | `NotFoundError` | 404 | Resource not found |
-| `ServerError.js` | `ServerError` | 500 | Internal server error |
-| `UnauthorizedError.js` | `UnauthorizedError` | 401 | Authentication required |
-| `ValidationError.js` | `validationError` | 400 | Validation failure (note: class name is lowercase `v`) |
-
-**Consistent JSON response shape**:
+**Consistent JSON response shape:**
 ```json
-{
-  "success": false,
-  "status": "fail",
-  "traceId": "abc-123",
-  "error": {
-    "message": "Resource not found",
-    "stack": "(development only)",
-    "fields": {}
-  }
-}
+{ "success": false, "status": "fail", "traceId": "abc-123", "error": { "message": "...", "stack": "(dev only)", "fields": {} } }
 ```
 
 ---
 
-## 6. Helpers
-
-### `src/helpers/formatJoiErrors.js` — Joi Error Formatter
-
-| Function | Description |
-|---|---|
-| `formatJoiErrors(joiError)` | Maps `joiError.details[]` to `{ fieldName: [cleanedMessages] }`. Strips quotes from messages. |
-
-**Example output**:
-```js
-{ email: ['email must be a valid email'], password: ['password length must be at least 8 characters long'] }
-```
-
-### `src/helpers/sanitizeData.js` — Data Sanitizer
-
-| Function | Description |
-|---|---|
-| `sanitizeData(doc, ...fields)` | Converts Mongoose doc to plain object via `toObject()`. Always deletes `__v` and `password`. Optionally deletes additional field names passed as rest args. Returns cleaned object or `null` if doc is falsy. |
-
-Used by `authService.registerUser()` and `authService.loginUser()` to strip sensitive/internal fields before returning user data in API responses.
-
----
-
-## 7. Middleware Pipeline
+## 6. Middleware Pipeline
 
 ### `src/middlewares/errorHandler.js` — Global Error Handler
 
-| Function | Description |
-|---|---|
-| `errorHandler(err, req, res, next)` | Last middleware. Defaults status to 500. Looks up `HTTP_REQUESTS[statusCode]`. Logs warn for 4xx, error for 5xx (with stack trace). Returns JSON with `success, status, traceId, error: { message, stack (dev only), fields }`. |
+Catches all errors, defaults to 500, logs appropriately (warn for 4xx, error for 5xx with stack), returns structured JSON.
 
 ### `src/middlewares/injectServices.js` — IoC Injection
 
-| Function | Description |
-|---|---|
-| `injectServices(req, res, next)` | Attaches `req.container` (the singleton container) and `req.getService(name)` helper that delegates to `container.get(name)`. |
+Attaches `req.container` and `req.getService(name)` helper.
 
 ### `src/middlewares/tracer.js` — Request ID & HTTP Logging
 
-| Function | Description |
+Assigns `req.id` from `X-Request-ID` header or random UUID segment. Sets `X-Request-ID` response header. Creates Morgan logger writing to Winston at `http` level.
+
+### `src/middlewares/validation.js` — Joi Validation
+
+| Export | Description |
 |---|---|
-| `tracerMiddleware(req, res, next)` | Assigns `req.id` from `X-Request-ID` header or first segment of `crypto.randomUUID()`. Sets `X-Request-ID` response header. Creates a Morgan HTTP logger writing to Winston at `http` level with format `[:id] :method :url :status :res[content-length] - :response-time ms`. |
+| `validate(schema)` | Validates `req.body` with `abortEarly: false`. Sets `req.validatedBody` on success. Passes `ValidationError` on failure. Attaches `_validationSchema` for Swagger auto-detect. |
+| `validateQuery(schema)` | Validates `req.query` with `allowUnknown: true`. Sets `req.validatedQuery` on success. Attaches `_queryValidationSchema` for Swagger auto-detect. |
 
-### `src/middlewares/validation.js` — Joi Validation Middleware
+### `src/middlewares/auth.js` — JWT Authentication
 
-| Function | Description |
-|---|---|
-| `validate(schema)` | Returns Express middleware. Validates `req.body` against Joi schema with `abortEarly: false`. On error: formats via `formatJoiErrors`, creates `ValidationError` with `fields`, passes to `next(error)`. On success: sets `req.validatedBody = value`, calls `next()`. |
+`authenticate(req, res, next)`: Checks Bearer token from `Authorization` header, falls back to `req.cookies.token`. Verifies via `verifyJwt()`. Sets `req.user = { id, email, role }`. Passes `UnauthorizedError` on failure.
 
-### `src/middlewares/auth.js` — JWT Authentication Middleware
+### `src/middlewares/authorize.js` — Role-Based Access
 
-| Function | Description |
-|---|---|
-| `authenticate(req, res, next)` | Extracts Bearer token from `Authorization` header. Verifies it using `verifyJwt()` (standalone export from `security.repository.js`). On success: sets `req.user = { id, email }` from decoded payload, calls `next()`. On failure: passes `UnauthorizedError('Invalid or expired token')` to `next(err)`. Skips middleware entirely if no Authorization header is present. |
+`authorize(allowedRoles)`: Returns middleware that checks `req.user.role` against allowed list. Passes `ForbiddenError` if not authorized. Usage: `authorize('admin')` or `authorize(['admin', 'moderator'])`.
 
 ### `src/middlewares/rateLimiter.js` — Per-Route Rate Limiter Factory
 
-| Function | Description |
+`createRateLimiter(options)`: Factory creating Express rate-limit middleware. Options: `{ windowMs, max, message }`. Default: 1-minute window, 10 max.
+
+### `src/middlewares/perfMonitor.js` — Performance Monitoring
+
+| Export | Description |
 |---|---|
-| `createRateLimiter(options)` | Factory that creates Express rate-limit middleware per route. Accepts `{ windowMs, max, message }`. Default: 1-minute window, 10 max, JSON error body. Used to apply different limits per endpoint (e.g., 5/min for login, 10/min for register). |
+| `perfMonitor(req, res, next)` | Middleware that tracks total requests, by-route, by-method, by-status, response time histogram, and CPU/memory. Stores metrics at `req.app.locals.metrics`. |
+| `collectSnapshot(metrics)` | Builds a human-readable snapshot from raw metrics. |
+| `createMetrics()` | Initializes an empty metrics store. |
+
+**Metrics available at** `GET /health/metrics` when `PERF_MONITOR_CONFIG.metricsEndpoint` is `true`. Returns `{ uptime, requests: { total, byMethod, byRoute, byStatus, avgResponseMs }, histogram, system: { memory, loadAvg, cpuUser, cpuSystem } }`.
 
 ---
 
-## 8. Models
+## 7. Models
 
 ### `src/models/User.js` — Mongoose User Model
-
-**Schema fields**:
 
 | Field | Type | Description |
 |---|---|---|
 | `name` | `String` | User's full name |
-| `email` | `String` | Email address |
+| `email` | `String` (unique) | Email address |
 | `password` | `String` | Hashed password |
+| `role` | `String` (default: `'user'`) | Role for authorization |
 
-**Hooks**:
-- `pre('save')` — **Commented out** (see `src/models/User.js:13-20`). Hashing is handled by `SecurityService` → `SecurityRepository` instead. When active, hashes password via `bcrypt.hash(this.password, salt)` if `this.isModified('password')`.
+### Auto-Model Loading
 
-**Exports**: `mongoose.model('User', schema)`
-
-### `src/models/index.js` — Auto-Model Loader
-
-| Export | Description |
-|---|---|
-| Auto-executed `require` side-effect | Scans `src/models/` for `.js` files (excluding `index.js`), calls `require()` on each. Each model's `mongoose.model()` call registers it globally with Mongoose, making it available to all repositories. Imported in `container.js` to ensure models are registered before any repository uses them. |
-
-**How it works**: All schema/model definition files in `src/models/` are automatically discovered and loaded at startup. Developers only need to create a new file with a standard `mongoose.model('Name', schema)` call — the auto-loader handles registration.
+`bootstrap/loadModels.js` scans `src/models/` and auto-registers each model with Mongoose. Additionally converts each to an OpenAPI schema via `mongoose-to-swagger`, accessible via the exported `modelSchemas`.
 
 ---
 
-## 9. Repositories
+## 8. Repositories
 
-### `src/repositories/user.repository.js` — User Data Access
-
-| Method | Description |
-|---|---|
-| `findById(id)` | Delegates to `this.dbStrategy.findById('User', id)` (engine-agnostic) |
-| `findByEmail(email)` | Delegates to `this.dbStrategy.findOne('User', { email })` |
-| `create(userData)` | Delegates to `this.dbStrategy.create('User', userData)` |
-| `hashPassword(pass)` | Empty stub method (unused) |
-
-**Note**: No longer imports Mongoose directly. Receives `{ dbStrategy }` via constructor injection (from container). The strategy is selected by config — `MongoStrategy` (default) or `PostgresStrategy` (stub).
-
-### `src/repositories/security.repository.js` — Security Data Access
+### `src/repositories/user.repository.js`
 
 | Method | Description |
 |---|---|
-| `hash(entering)` | Returns `bcrypt.hash(entering, salt)` using env config salt or default 12 |
-| `assignJwt(payload, ttl)` | Signs **access** JWT via `jwt.sign(payload, env.jwt.secret, { expiresIn: ttl ?? env.jwt.expiresIn })`. Returns signed token string. |
-| `assignRefreshJwt(payload, ttl)` | Signs **refresh** JWT via `jwt.sign(payload, env.jwt.refreshSecret, { expiresIn: ttl ?? env.jwt.refreshExpiresIn })`. Returns signed token string. |
-| `comparePassword(providedPassword, hashedPassword)` | Returns `bcrypt.compare(providedPassword, hashedPassword)` for password verification |
+| `findById(id)` | `dbStrategy.findById('User', id)` |
+| `findByEmail(email)` | `dbStrategy.findOne('User', { email })` |
+| `create(userData)` | `dbStrategy.create('User', userData)` |
 
-**Standalone exports** (not class methods — used directly by `auth` middleware to avoid circular DI):
+Receives `{ dbStrategy }` via constructor injection.
+
+### `src/repositories/security.repository.js`
+
+| Method | Description |
+|---|---|
+| `hash(entering)` | `bcrypt.hash(entering, salt)` |
+| `assignJwt(payload, ttl)` | Signs access JWT via `jwt.sign()` |
+| `assignRefreshJwt(payload, ttl)` | Signs refresh JWT |
+| `assignResetJwt(payload, ttl)` | Signs reset-password JWT |
+| `comparePassword(provided, hashed)` | `bcrypt.compare()` |
+
+**Standalone exports** (used by auth middleware to avoid circular DI):
 | Export | Description |
 |---|---|
-| `verifyJwt(token)` | Verifies access JWT via `jwt.verify(token, env.jwt.secret)`. Returns decoded payload or throws. |
-| `verifyRefreshJwt(token)` | Verifies refresh JWT via `jwt.verify(token, env.jwt.refreshSecret)`. Returns decoded payload or throws. |
+| `verifyJwt(token)` | Verifies access JWT |
+| `verifyRefreshJwt(token)` | Verifies refresh JWT |
+| `verifyResetJwt(token)` | Verifies reset-password JWT |
 
 ---
 
-## 10. Routes
+## 9. Routes
 
-### `src/routes/index.js` — Root Router
+### Route structure
 
-| Mount | Description |
-|---|---|
-| `GET /` | Returns `{ message: "SASS work !" }` |
-| `/api-docs` | Swagger UI served via `swagger-ui-express` |
-| `/health` | Health check routes |
-| `/api/v1` | API v1 routes |
-| `fallback` | 404 catch-all handler |
+```
+routes/
+  └── api/v1/
+      ├── auth/
+      │   ├── login.js             POST    /login
+      │   ├── register.js          POST    /register
+      │   ├── refresh-token.js     POST    /refresh-token
+      │   ├── forgot-password.js   POST    /forgot-password
+      │   ├── reset-password.js    POST    /reset-password
+      │   └── me.js                GET     /me
+      └── users/
+          ├── getUser.js           GET     /:id
+          └── listUsers.js         GET     /
+```
+
+Each file exports `{ method, path, middleware, handler }`. The bootstrap auto-loader handles registration.
 
 ### `src/routes/health.js`
 
-| Method | Path | Handler |
+| Method | Path | Description |
 |---|---|---|
-| `GET` | `/health` | `health.controller.checkHealth` |
+| `GET` | `/health` | System health (DB status, uptime, memory) |
+| `GET` | `/health/metrics` | Performance metrics snapshot |
 
-### `src/routes/defaults/fallback.js` — 404 Handler
+### `src/routes/defaults/fallback.js`
 
-| Handler | Description |
-|---|---|
-| Fallback middleware | Catches all unmatched routes, passes `NotFoundError('route not found [${req.originalUrl}]')` to next middleware |
-
-### `src/routes/v1/index.js` — v1 Aggregator (Auto-Loader)
-
-Recursively scans `src/routes/v1/` using `loader.js` and builds a router from folder-based route definition files. Each route file exports:
-
-| Key | Required | Description |
-|---|---|---|
-| `method` | Yes | HTTP method (`get`, `post`, `put`, `delete`, `patch`) |
-| `path` | Yes | URL path relative to the directory |
-| `middleware` | No | Array of Express middleware functions |
-| `handler` | Yes | Route handler function |
-
-### `src/routes/v1/loader.js` — Recursive Route Scanner
-
-| Export | Description |
-|---|---|
-| `collectRoutes(dir, basePath)` | Recursively scans directory, collects all route definitions into an array. Skips `index.js`, `loader.js`, and dotfiles. |
-| `buildRouter(dir)` | Calls `collectRoutes` and registers each definition on an Express router. Returns the assembled router. |
-
-### `src/routes/v1/auth/` — Auth Routes (Folder)
-
-| File | Method | Path | Middleware | Handler |
-|---|---|---|---|---|
-| `register.js` | POST | `/register` | `registerLimiter, validate(registerSchema)` | `auth.controller.register` |
-| `login.js` | POST | `/login` | `loginLimiter, validate(loginSchema)` | `auth.controller.login` |
-| `refresh-token.js` | POST | `/refresh-token` | `refreshLimiter, validate(refreshTokenSchema)` | `auth.controller.refresh` |
+404 catch-all — passes `NotFoundError('route not found [${url}]')`.
 
 ---
 
-## 11. Services
+## 10. Services
 
 ### `src/services/container.js` — IoC Dependency Container
 
 **`DependencyContainer`** class:
+| Method | Description |
+|---|---|
+| `register(name, instance)` | Stores instance by name |
+| `get(name)` | Retrieves instance. Throws if not found. |
+
+**Registration order**: Strategies → Repositories → Services. Uses **driver-based selection**:
+```js
+const DBStrategy = { mongo: MongoStrategy, postgres: PostgresStrategy }[config.database.driver];
+const StorageStrategy = { local: LocalStorageStrategy, s3: S3StorageStrategy }[config.storage.driver];
+const EmailStrategy = { console: ConsoleEmailStrategy, stub: StubEmailStrategy }[config.email.driver];
+```
+
+### `src/services/authService.js`
 
 | Method | Description |
 |---|---|
-| `constructor()` | Initializes `this.services = new Map()` |
-| `register(name, instance)` | Stores instance by name via `this.services.set(name, instance)` |
-| `get(name)` | Retrieves instance. Throws `Error('Service ${name} not found')` if not registered. |
+| `registerUser(data)` | Checks duplicate email → `ConflictError`. Creates user. |
+| `loginUser(data)` | Finds user, compares password → `UnauthorizedError`. Returns `{ user, accessToken, refreshToken }`. |
+| `refreshToken(token)` | Verifies refresh JWT, generates new token pair. |
+| `forgotPassword(email)` | Generates reset JWT, sends email via `emailStrategy`. |
+| `resetPassword(token, password)` | Verifies reset JWT, hashes + stores new password. |
+| `getProfile(userId)` | Returns user or `NotFoundError`. |
 
-**Singleton `container`** registers at startup:
-
-| Order | Registration | Dependencies |
-|---|---|---|
-| 0 | `'dbStrategy'` | `new MongoStrategy()` (or `PostgresStrategy` based on config) |
-| 1 | `'storageStrategy'` | `new LocalStorageStrategy(storageConfig)` (or `S3StorageStrategy` based on config) |
-| 2 | `'securityService'` | `SecurityService` with `secRepository: SecurityRepository` |
-| 3 | `'userRepository'` | `UserRepository` with `{ dbStrategy: container.get('dbStrategy') }` |
-| 4 | `'authService'` | `AuthService` with `securityService: container.get('securityService')`, `userRepository: container.get('userRepository')` |
-
-**Note**: Models are auto-loaded at the top of `container.js` via `require('../models/index')` before any repository is instantiated, ensuring Mongoose has all schemas registered.
-
-### `src/services/authService.js` — Auth Business Logic
+### `src/services/securityService.js`
 
 | Method | Description |
 |---|---|
-| `constructor({ securityService, userRepository })` | Stores dependencies |
-| `registerUser(userData)` | Checks if email exists → throws `ConflictError`. Creates user via repository. Returns user. |
-| `loginUser(userData)` | Finds user by email → throws `UnauthorizedError` if not found. Compares password → throws `UnauthorizedError` if invalid. Returns `{ user: sanitizeData(existingUser), accessToken, refreshToken }` on success. |
-| `refreshToken(token)` | Verifies refresh JWT via `securityService.verifyRefreshToken(token)`. Finds user by decoded `id` → throws `UnauthorizedError` if not found. Generates and returns `{ accessToken, refreshToken }`. |
-
-### `src/services/securityService.js` — Security Business Logic
-
-| Method | Description |
-|---|---|
-| `constructor({ secRepository })` | Stores security repository |
-| `hashPassword(password)` | Delegates to `this.secRepository.hash(password)`. Returns bcrypt-hashed password. |
-| `comparePassword(providedPassword, hashedPassword)` | Delegates to `this.secRepository.comparePassword()`. Returns boolean comparison result. |
-| `generateAuthToken(user)` | Builds JWT payload `{ id, email }` from user doc and delegates to `this.secRepository.assignJwt()`. Returns signed access JWT string. |
-| `generateRefreshToken(user)` | Builds JWT payload `{ id, email }` from user doc and delegates to `this.secRepository.assignRefreshJwt()`. Returns signed refresh JWT string. |
-| `verifyRefreshToken(token)` | Calls `verifyRefreshJwt(token)` (standalone function). Returns decoded payload or throws. |
+| `hashPassword(password)` | Delegates to `secRepository.hash()` |
+| `comparePassword(provided, hashed)` | Delegates to `secRepository.comparePassword()` |
+| `generateAuthToken(user)` | Signs access JWT with `{ id, email, role }` |
+| `generateRefreshToken(user)` | Signs refresh JWT |
+| `generateResetToken(user)` | Signs reset-password JWT (15m expiry) |
+| `verifyRefreshToken(token)` | Calls `verifyRefreshJwt()` standalone |
 
 ---
 
-## 12. Strategies
-
-Pluggable backend interfaces under `src/strategies/`. Selected at startup via configuration and registered in the IoC container.
+## 11. Strategies
 
 ### Database Strategies
 
-| File | Status | Description |
+| Strategy | Status | Methods |
 |---|---|---|
-| `database/mongo.strategy.js` | **Implemented** | Full MongoDB/Mongoose wrapper. Methods: `create(model, data)`, `findById(model, id)`, `findOne(model, query)`, `find(model, query)`, `update(model, id, data)`, `delete(model, id)`, `count(model, query)`. Each uses `mongoose.model(model)` for engine-agnostic model resolution. |
-| `database/postgres.strategy.js` | **Stub** | Same interface as MongoStrategy. Each method throws `new Error('not implemented')`. Ready for PostgreSQL implementation. |
+| `mongo.strategy.js` | **Full** | `create`, `findById`, `findOne`, `find`, `update`, `delete`, `count` |
+| `postgres.strategy.js` | **Full** | Same interface, lazy `pg.Pool`, parameterised queries |
 
 ### Storage Strategies
 
-| File | Status | Description |
+| Strategy | Status | Methods |
 |---|---|---|
-| `storage/localStorage.strategy.js` | **Implemented** | Local filesystem storage using `fs/promises`. Constructor accepts `{ uploadDir, baseUrl }`. Methods: `upload(filename, buffer)` — writes file, returns `{ url, filename }`. `delete(filename)` — removes file. `getUrl(filename)` — returns public URL. Creates `uploadDir` if missing. |
-| `storage/s3Storage.strategy.js` | **Stub** | Same interface as LocalStorageStrategy. Each method throws `new Error('not implemented')`. Ready for AWS S3 SDK implementation. |
+| `localStorage.strategy.js` | **Full** | `upload`, `delete`, `getUrl` (uses `fs/promises`) |
+| `s3Storage.strategy.js` | **Full** | Same interface, lazy `@aws-sdk/client-s3` |
 
-### Email Strategies (Planned)
+### Email Strategies
 
-| Directory | Purpose |
+| Strategy | Status | Methods |
+|---|---|---|
+| `consoleEmail.strategy.js` | **Full** | `send` — logs to console |
+| `stubEmail.strategy.js` | **Stub** | `send` — throws (placeholder) |
+
+All strategy interfaces use `async` methods and receive config via constructor.
+
+---
+
+## 12. Swagger / OpenAPI
+
+### `src/swagger/components/index.js`
+
+| Section | Contents |
 |---|---|
-| `email/` | Empty directory for future email provider abstraction (e.g., SMTP, SendGrid). |
+| `securitySchemes` | `bearerAuth` (HTTP Bearer), `cookieAuth` (API key in cookie `token`) |
+| `responses` | `ValidationError`, `ConflictError`, `UnauthorizedError`, `ForbiddenError`, `NotFoundError`, `InternalServerError` |
+| `schemas` | Auto-generated from Joi via `joi-to-swagger`, auto-generated from Mongoose models via `mongoose-to-swagger`, plus manual `UserResponse` |
 
-**Pattern**: Each domain defines a consistent interface. The container selects the implementation based on config at startup:
-```js
-const dbStrategy = config.database.driver === 'postgres'
-  ? new PostgresStrategy()
-  : new MongoStrategy();
-container.register('dbStrategy', dbStrategy);
-```
+### Auto-Generated from Route Files
+
+Each route's `docs` property + auto-detected schemas produce OpenAPI path definitions. The `generatePaths()` function in `loadSwagger.js` handles all the auto-detection.
 
 ---
 
@@ -445,120 +467,47 @@ container.register('dbStrategy', dbStrategy);
 
 ### `src/utils/logger.js` — Winston Logger
 
-**Log levels**: `error(0)` `warn(1)` `info(2)` `http(3)` `debug(4)`
+Levels: `error(0)` `warn(1)` `info(2)` `http(3)` `debug(4)`. Console (all, colorized) + File transports (`error.log`, `warning.log`, `app.log`).
 
-**Level function**: Returns `'debug'` in development, `'warn'` otherwise.
+### `src/utils/formatJoiErrors.js`
 
-**Colors**: error=red, warn=yellow, info=green, http=magenta, debug=white
+Maps `joiError.details[]` to `{ fieldName: [cleanedMessages] }`.
 
-**Format**: `[YYYY-MM-DD HH:mm:ss] env.LEVEL: message {meta}` with stack trace support.
+### `src/utils/sanitizeData.js`
 
-**Transports**:
+Converts Mongoose doc to plain object, removes `password`, `__v`, and optional extra fields.
 
-| Transport | Level | Output |
-|---|---|---|
-| Console | All (colorized) | stdout |
-| File | `error` | `storage/logs/error.log` |
-| File | `info` | `storage/logs/app.log` |
-| File | `warn` | `storage/logs/warning.log` |
+### `src/utils/cookieParser.js`
+
+Zero-dependency cookie parser middleware. Parses `Cookie` header into `req.cookies`. Exports `parse(str)` for standalone use.
 
 ---
 
 ## 14. Validation Schemas
 
-### `src/validation/auth/register.js` — Registration Schema (Joi)
-
-| Field | Type | Constraints |
-|---|---|---|
-| `name` | `string` | trim, min 2, max 30, required |
-| `email` | `string` | email format, trim, required |
-| `password` | `string` | trim, min 8, required |
-
-### `src/validation/auth/login.js` — Login Schema (Joi)
-
-| Field | Type | Constraints |
-|---|---|---|
-| `email` | `string` | email format, trim, required |
-| `password` | `string` | trim, min 8, required |
-
-### `src/validation/auth/refreshToken.js` — Refresh Token Schema (Joi)
-
-| Field | Type | Constraints |
-|---|---|---|
-| `refreshToken` | `string` | trim, min 1, required |
+| File | Fields |
+|---|---|
+| `auth/register.js` | `name` (string, 2-30), `email` (email), `password` (string, min 8) |
+| `auth/login.js` | `email` (email), `password` (string, min 8) |
+| `auth/refreshToken.js` | `refreshToken` (string) |
+| `auth/forgotPassword.js` | `email` (email) |
+| `auth/resetPassword.js` | `token` (string), `password` (string, min 8) |
+| `users/list.js` | `page` (1+), `limit` (1-100), `sort` (enum), `search` (string, optional) |
 
 ---
 
-## 15. Swagger / OpenAPI
+## 15. Tests
 
-### `src/routes/swagger/index.js` — OpenAPI Root Document
+### Test Suites
 
-- OpenAPI 3.0.0
-- Title: "SaaS Framework Custom Engine Architecture"
-- Server base path: `/api/v1`
-- Paths auto-generated via `loader.js` from route definition `docs` properties
-- Components from `components/index.js`
+| File | Tests | Description |
+|---|---|---|
+| `auth.int.test.js` | 25 | Full auth flow: register, login, refresh, forgot, reset, me |
+| `auth.middleware.test.js` | 10 | Authenticate (5) + authorize (5) |
+| `dynamic-routes.test.js` | 7 | Dynamic `:id` (4) + query params (3) |
+| `strategies.test.js` | 20 | Mongo (7), LocalStorage (3), Postgres (6), S3Storage (4) |
+| Other suites | ~23 | Rate limiter, security repository, env, init, static analysis |
 
-### `src/routes/swagger/loader.js` — Swagger Auto-Generator
+Total: **85+ tests** across multiple suites.
 
-| Export | Description |
-|---|---|
-| `generatePaths({ routesDir, manualPaths })` | Scans route definitions via `collectRoutes`, reads each route's `docs` property, and builds an OpenAPI paths object. Falls back to sensible defaults when `docs` is omitted. `manualPaths` allows overriding or extending auto-generated paths. |
-
-**Default behavior**:
-- Tag is derived from the first URL segment (`/auth/login` → `Auth`)
-- Success response: `200` for GET, `201` for POST
-- Auto-includes `400` (`ValidationError`) and `500` (`InternalServerError`) refs
-- When `docs` is present on a route, `requestBody` and `responses` are fully customizable
-
-### `src/routes/swagger/components/index.js` — Shared Components
-
-| Section | Contents |
-|---|---|
-| `securitySchemes` | Bearer JWT auth |
-| `responses` | ValidationError, ConflictError, UnauthorizedError, InternalServerError |
-| `schemas` | LoginRequest, RegisterRequest (auto-generated from Joi via `joi-to-swagger`), UserResponse, UserEntity, AuthTokenPayload, RefreshTokenRequest |
-
-### `src/routes/swagger/components/responses.js`
-
-| Response | Status | Description |
-|---|---|---|---|
-| `ValidationError` | 400 | Full error structure with `fields` example |
-| `ConflictError` | 409 | Error with stack trace example |
-| `UnauthorizedError` | 401 | Auth failure error |
-| `InternalServerError` | 500 | Generic error message |
-
-### `src/routes/swagger/schemas/user.entity.js`
-
-| Schema | Properties |
-|---|---|
-| `UserEntity` | `_id`, `name`, `email`, `createdAt` |
-| `AuthTokenPayload` | `accessToken` (JWT string), `refreshToken` (JWT string) |
-
-### Auto-Generated from Route Files (via `loader.js`)
-
-Each route file in `src/routes/v1/` can export a `docs` property. The swagger loader auto-generates path definitions:
-
-| Endpoint | Source File | Method | Request Body | Responses |
-|---|---|---|---|---|---|
-| `/auth/register` | `routes/v1/auth/register.js` | POST | `RegisterRequest` | 201 (UserResponse), 400 (ValidationError), 409 (ConflictError), 500 (InternalServerError) |
-| `/auth/login` | `routes/v1/auth/login.js` | POST | `LoginRequest` | 201 (UserResponse + tokens), 400 (ValidationError), 401 (UnauthorizedError), 500 (InternalServerError) |
-| `/auth/refresh-token` | `routes/v1/auth/refresh-token.js` | POST | `{ refreshToken }` | 200 (tokens), 400 (ValidationError), 401 (UnauthorizedError), 500 (InternalServerError) |
-
----
-
-## 16. Tests
-
-### `src/tests/env.test.js` — Environment Variables
-
-| Test | Assertion |
-|---|---|
-| NODE_ENV is test | `expect(process.env.NODE_ENV).toBe('test')` |
-| MONGO_URI contains sass_test_db | `expect(process.env.MONGO_URI).toContain('sass_test_db')` |
-| PORT is 5001 | `expect(process.env.PORT).toBe('5001')` |
-
-### `src/tests/init.test.js` — Sanity Check
-
-| Test | Assertion |
-|---|---|
-| Framework works | `expect(true).toBe(true)` |
+Run: `npm test` (local) or `./command/test.sh` (Docker).

@@ -13,24 +13,34 @@
 ## Quick Links
 
 - **Entry Point**: [`server.js`](../server.js)
-- **App Assembly**: [`src/app.js`](../src/app.js)
+- **Bootstrap Orchestrator**: [`src/bootstrap/index.js`](../src/bootstrap/index.js)
+- **Route Auto-Loader**: [`src/bootstrap/loadRoutes.js`](../src/bootstrap/loadRoutes.js)
+- **Swagger Auto-Generator**: [`src/bootstrap/loadSwagger.js`](../src/bootstrap/loadSwagger.js)
+- **Model Auto-Loader**: [`src/bootstrap/loadModels.js`](../src/bootstrap/loadModels.js)
 - **IoC Container**: [`src/services/container.js`](../src/services/container.js)
 - **Auth Middleware**: [`src/middlewares/auth.js`](../src/middlewares/auth.js)
+- **Authorize Middleware**: [`src/middlewares/authorize.js`](../src/middlewares/authorize.js)
 - **Rate Limiter Factory**: [`src/middlewares/rateLimiter.js`](../src/middlewares/rateLimiter.js)
-- **API Routes**: [`src/routes/v1/auth.js`](../src/routes/v1/auth.js)
-- **Database Strategy**: [`src/strategies/database/mongo.strategy.js`](../src/strategies/database/mongo.strategy.js)
-- **Storage Strategy**: [`src/strategies/storage/localStorage.strategy.js`](../src/strategies/storage/localStorage.strategy.js)
-- **Model Auto-Loader**: [`src/models/index.js`](../src/models/index.js)
-- **Route Loader**: [`src/routes/v1/loader.js`](../src/routes/v1/loader.js)
+- **Validation Middleware**: [`src/middlewares/validation.js`](../src/middlewares/validation.js)
+- **Perf Monitor**: [`src/middlewares/perfMonitor.js`](../src/middlewares/perfMonitor.js)
+- **Cookie Parser**: [`src/utils/cookieParser.js`](../src/utils/cookieParser.js)
+- **API Routes**: [`src/routes/api/v1/auth/`](../src/routes/api/v1/auth/)
 - **Error Base**: [`src/errors/appErrors.js`](../src/errors/appErrors.js)
 - **Logger**: [`src/utils/logger.js`](../src/utils/logger.js)
 
-## What's Implemented (see [todo](todo))
+## What's Implemented
 
-- Auth: register, login (access+refresh tokens), refresh-token endpoint, JWT middleware
-- Strategy: MongoStrategy, LocalStorageStrategy (full); PostgresStrategy, S3StorageStrategy (stubs)
-- Per-route rate limiting: `createRateLimiter()` factory with per-endpoint limits (5/min login, 10/min register, 20/min refresh)
-- Model auto-loader — drop a file in `src/models/`, it's registered automatically
-- Repositories are engine-agnostic via injected `dbStrategy`
-- 50 integration tests across 7 suites (auth endpoints, middleware, strategies, rate limiter, security)
-- All `.env` files include storage config vars; `prodcution` typo fixed
+- Auth: register, login (access+refresh tokens), refresh-token, forgot-password, reset-password, get profile
+- JWT middleware with Bearer + cookie fallback + role-based `authorize()`
+- Strategy: MongoStrategy, PostgresStrategy, LocalStorageStrategy, S3StorageStrategy, ConsoleEmailStrategy, StubEmailStrategy
+- Per-route rate limiting: `createRateLimiter()` factory
+- Auto-model loading: drop a file in `src/models/`, it's registered + auto-converted to OpenAPI schema
+- Auto-route loading: drop `{ method, path, middleware, handler }` in `src/routes/api/v1/`, it's live
+- Auto-Swagger: Joi body schemas, query schemas, path params (`:id`), auth middleware all auto-detected
+- Dynamic routes via `path: '/:id'` export
+- Query validation via `validateQuery(joiSchema)`, auto-documented
+- Configurable middleware pipeline, route prefix, and swagger info from config files
+- Performance monitoring with `/health/metrics` endpoint
+- Request body size limit configurable via `BODY_LIMIT` env var
+- Cookie parser middleware (zero-dep inline implementation)
+- 85+ integration tests across multiple suites

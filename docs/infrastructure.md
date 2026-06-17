@@ -111,28 +111,33 @@ Missing any throws: `[CRITICAL CONFIG ERROR]: Missing environment variable [KEY]
 | Variable | Default | Description |
 |---|---|---|
 | `NODE_ENV` | `development` | Runtime environment |
+| `ROUTE_PREFIX` | `/api/v1` | API route prefix (folder + mount point) |
 | `PORT` | `3000` | HTTP server port |
+| `BODY_LIMIT` | `1mb` | Maximum JSON request body size |
 | `MONGO_URI` | `mongodb://localhost:27017/myapp_dev` | MongoDB connection string |
 | `BCRPT_SALT_SIZE` | — | Bcrypt salt rounds |
 | `JWT_SECRET` | — | JWT signing secret |
-| `JWT_EXPIRES_IN` | `15m` | JWT token expiry duration |
+| `JWT_EXPIRES_IN` | `15m` | Access token expiry duration |
 | `JWT_REFRESH_SECRET` | — | JWT refresh token secret |
 | `JWT_REFRESH_EXPIRES_IN` | `7d` | JWT refresh token expiry |
+| `JWT_RESET_EXPIRES_IN` | `15m` | Reset-password token expiry |
 | `CORS_ORIGIN` | `*` | Allowed CORS origin |
 | `RATE_LIMIT_MAX` | `null` | Max requests per rate-limit window |
 | `DB_DRIVER` | `mongo` | Database strategy driver (`mongo` or `postgres`) |
 | `STORAGE_DRIVER` | `local` | Storage strategy driver (`local` or `s3`) |
-| `STORAGE_UPLOAD_DIR` | `./storage/uploads` | Local filesystem upload directory |
-| `STORAGE_BASE_URL` | `/uploads` | Public base URL for uploaded files |
-| `STORAGE_S3_BUCKET` | — | AWS S3 bucket name |
-| `STORAGE_S3_REGION` | — | AWS S3 region |
+| `STORAGE_LOCAL_PATH` | `storage/uploads` | Local filesystem upload directory |
+| `STORAGE_LOCAL_URL` | `/uploads` | Public base URL for uploaded files |
+| `S3_BUCKET` | — | AWS S3 bucket name |
+| `S3_REGION` | — | AWS S3 region |
+| `EMAIL_DRIVER` | `console` | Email strategy (`console` or `stub`) |
+| `EMAIL_FROM` | `noreply@example.com` | Default from address for emails |
 
 ### Environment Files
 
 | File | Key Overrides |
 |---|---|
 | `.env.development` | NODE_ENV=development, PORT=5000, dev DB URI |
-| `.env.production` | NODE_ENV=production, production DB URI |
+| `.env.production` | NODE_ENV=production, production DB URI, strict secrets |
 | `.env.test` | NODE_ENV=test, PORT=5001, test DB URI |
 
 ---
@@ -167,10 +172,50 @@ Missing any throws: `[CRITICAL CONFIG ERROR]: Missing environment variable [KEY]
 ### Log Format
 
 ```
-[2026-06-16 13:00:00] development.INFO: Server efficiently running in [development] mode on port 5000 {}
+[2026-06-17 13:00:00] development.INFO: Server running in [development] mode on port 5000 {}
 ```
 
 Includes stack traces for errors, JSON metadata for additional context.
+
+---
+
+## Performance Metrics
+
+**File**: `src/middlewares/perfMonitor.js`
+
+Metrics are collected in-memory and exposed at `GET /health/metrics`:
+
+```json
+{
+  "uptime": 3600,
+  "requests": {
+    "total": 1500,
+    "byMethod": { "GET": 1000, "POST": 500 },
+    "byRoute": {
+      "/auth/login": { "count": 200, "avgMs": 45.5 },
+      "/auth/register": { "count": 100, "avgMs": 120.3 }
+    },
+    "byStatus": { "2xx": 1400, "4xx": 95, "5xx": 5 },
+    "avgResponseMs": 67.2
+  },
+  "histogram": { "5": 100, "10": 300, "25": 500, "50": 300, "100": 200, "250": 80, "500": 15, "1000": 3, "3000": 1, "5000": 1, "10000": 0 },
+  "system": {
+    "memory": { "rss": 123456789, "heapUsed": 65432100, "heapTotal": 100000000 },
+    "loadAvg": [0.5, 0.3, 0.1],
+    "cpuUser": 45000,
+    "cpuSystem": 12000
+  }
+}
+```
+
+**Configuration** in `src/config/system.js`:
+```js
+PERF_MONITOR_CONFIG: {
+  metricsEndpoint: true,   // Enable /health/metrics
+  trackRoutes: true,       // Per-route breakdown
+  histogramBuckets: [5, 10, 25, 50, 100, 250, 500, 1000, 3000, 5000, 10000]
+}
+```
 
 ---
 
@@ -202,9 +247,25 @@ Excludes from Docker build context:
 - `/docs`
 - `/command`
 
+**Note**: Should also exclude `.env*`, `.git`, `node_modules`, `README.md` for tighter security in the build context.
+
 ### `.gitignore`
 Ignores:
 - `*.env` files
 - `/node_modules`
 - `docs/` directory
 - `/storage` directory
+
+---
+
+## System Configuration
+
+`src/config/system.js` centralises framework-wide configuration:
+
+| Key | Type | Purpose |
+|---|---|---|
+| `SECURITY_DEFAULTS` | `Object` | Rate-limit window/max, CORS methods/headers |
+| `HTTP_REQUESTS` | `Object` | Status code → `{ status, message, log }` lookup |
+| `MIDDLEWARE_PIPELINE` | `string[]` | Ordered middleware keys applied globally |
+| `SWAGGER_CONFIG` | `Object` | OpenAPI `{ title, version, description }` |
+| `PERF_MONITOR_CONFIG` | `Object` | `{ metricsEndpoint, trackRoutes, histogramBuckets }` |

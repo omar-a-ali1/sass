@@ -36,6 +36,9 @@ module.exports = {
   /** HTTP server port */
   port: parseInt(process.env.PORT, 10) || 3000,
 
+  /** Maximum JSON request body size (express.json limit) */
+  bodyLimit: process.env.BODY_LIMIT || '1mb',
+
   database: {
     /** Database driver (currently only 'mongo' is implemented) */
     driver: process.env.DB_DRIVER || 'mongo',
