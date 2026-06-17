@@ -4,7 +4,7 @@
  * Defines reusable error response shapes used across all API paths.
  * Each response mirrors the framework's structured JSON error format.
  *
- * @module routes/swagger/components/responses
+ * @module swagger/components/responses
  */
 
 module.exports = {

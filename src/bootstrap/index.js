@@ -5,9 +5,9 @@
  *  1. Loads environment config
  *  2. Auto-loads Mongoose models
  *  3. Initialises the IoC container (strategies → repos → services)
- *  4. Auto-builds the v1 router from route definition files
+ *  4. Auto-builds the API router from route definition files
  *  5. Auto-generates OpenAPI/Swagger documentation from Joi schemas
- *  6. Creates the Express app with global middleware
+ *  6. Creates the Express app with configurable middleware pipeline
  *  7. Mounts routes and error handler
  *
  * @module bootstrap/index
@@ -21,6 +21,7 @@ const helmet = require('helmet');
 const swaggerUi = require('swagger-ui-express');
 
 const config = require('../config/environment');
+const { SWAGGER_CONFIG, MIDDLEWARE_PIPELINE } = require('../config/system');
 const { helmetConfig, corsOptions, rateLimiter } = require('../config/security');
 const logger = require('../utils/logger');
 
@@ -30,33 +31,38 @@ require('./loadModels');
 /** 2. Initialize IoC container (strategies, repos, services) */
 const container = require('../services/container');
 
-/** 3. Build  router from auto-scanned route files */
-const { Router } = require('./loadRoutes');
+/** 3. Build API router from auto-scanned route files */
+const { Router, routePrefix } = require('./loadRoutes');
 
 /** 4. Generate Swagger paths from route definitions */
 const { generatePaths } = require('./loadSwagger');
 const swaggerDoc = {
   openapi: '3.0.0',
-  info: {
-    title: 'SaaS Framework Custom Engine Architecture',
-    version: '1.0.0',
-    description: 'Fully automated Open-API documentation layer compiled using centralized Joi Schemas.',
-  },
-  servers: [{ url: '/api', description: 'Local Development Server' }],
+  info: { ...SWAGGER_CONFIG },
+  servers: [{ url: routePrefix, description: 'Local Development Server' }],
   paths: generatePaths(),
-  components: require('../routes/swagger/components'),
+  components: require('../swagger/components'),
 };
 
-/** 5. Create Express app with middleware pipeline */
+/** 5. Create Express app with configurable middleware pipeline */
 const app = express();
 
-app.use(favicon(path.join(__dirname, '..', '..', 'assets', 'favicon.ico')));
-app.use(helmetConfig);
-app.use(cors(corsOptions));
-app.use(express.json());
-app.use(rateLimiter);
-app.use(require('../middlewares/tracer'));
-app.use(require('../middlewares/injectServices'));
+/** Middleware lookup: maps pipeline keys to Express middleware */
+const middlewareMap = {
+  favicon: favicon(path.join(__dirname, '..', '..', 'assets', 'favicon.ico')),
+  helmet: helmetConfig,
+  cors: cors(corsOptions),
+  json: express.json(),
+  rateLimiter,
+  tracer: require('../middlewares/tracer'),
+  injectServices: require('../middlewares/injectServices'),
+};
+
+/** Apply middleware in the order defined by config */
+for (const key of MIDDLEWARE_PIPELINE) {
+  const mw = middlewareMap[key];
+  if (mw) app.use(mw);
+}
 
 /** 6. Mount routes */
 const healthRoutes = require('../routes/health');
@@ -65,7 +71,7 @@ const fallback = require('../routes/defaults/fallback');
 app.get('/', (req, res) => res.json({ message: 'SASS work !' }));
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDoc));
 app.use('/health', healthRoutes);
-app.use('/api', Router);
+app.use(routePrefix, Router);
 app.use(fallback);
 
 /** 7. Global error handler */

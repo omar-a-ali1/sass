@@ -59,6 +59,11 @@ function collectRoutes(dir, basePath = '') {
         (mw) => typeof mw === 'function' && mw._validationSchema
       )?._validationSchema || null;
 
+      /** Auto-detect Joi query validation schema from middleware chain */
+      const querySchema = middleware.find(
+        (mw) => typeof mw === 'function' && mw._queryValidationSchema
+      )?._queryValidationSchema || null;
+
       routes.push({
         method: def.method.toLowerCase(),
         path: `${basePath}${def.path || `/${path.basename(entry.name, '.js')}`}`,
@@ -66,6 +71,7 @@ function collectRoutes(dir, basePath = '') {
         handler: def.handler,
         docs: def.docs || null,
         validationSchema,
+        querySchema,
       });
     }
   }
@@ -92,9 +98,11 @@ function buildRouter(dir) {
   return router;
 }
 
-const routesDir = path.join(__dirname, '..', 'routes', 'api');
+const env = require('../config/environment');
+
+const routesDir = path.join(__dirname, '..', 'routes', env.routePrefix.replace(/^\//, ''));
 
 /** Pre-built  router — auto-loaded at import time */
 const Router = buildRouter(routesDir);
 
-module.exports = { collectRoutes, buildRouter, Router };
+module.exports = { collectRoutes, buildRouter, Router, routePrefix: env.routePrefix };

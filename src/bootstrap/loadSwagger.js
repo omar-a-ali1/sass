@@ -9,7 +9,7 @@
 
 const j2s = require('joi-to-swagger');
 const path = require('path');
-const { collectRoutes } = require('./loadRoutes');
+const { collectRoutes, routePrefix } = require('./loadRoutes');
 
 /**
  * Build an OpenAPI requestBody from a Joi schema
@@ -25,6 +25,62 @@ function requestBodyFromSchema(schema) {
       'application/json': { schema: swagger },
     },
   };
+}
+
+/**
+ * Convert a Joi query schema to OpenAPI query parameters
+ *
+ * Takes a Joi object schema and transforms each property into
+ * `{ name, in: 'query', schema, description, required }`.
+ *
+ * @param {import('joi').ObjectSchema} schema
+ * @returns {Object[]}
+ */
+function querySchemaToParameters(schema) {
+  const { swagger } = j2s(schema);
+  const required = new Set(swagger.required || []);
+
+  return Object.entries(swagger.properties || {}).map(([name, prop]) => ({
+    name,
+    in: 'query',
+    description: prop.description || '',
+    required: required.has(name),
+    schema: { ...prop, description: undefined },
+  }));
+}
+
+/**
+ * Extract OpenAPI path parameters from an Express-style path
+ *
+ * Converts `:id` and `:userId` segments into
+ * `{ name, in: 'path', required: true, schema: { type: 'string' } }`.
+ *
+ * @param {string} routePath - e.g. '/v1/users/:id'
+ * @returns {Object[]}
+ */
+function extractPathParams(routePath) {
+  const params = [];
+  const regex = /:(\w+)/g;
+  let match;
+  while ((match = regex.exec(routePath)) !== null) {
+    params.push({
+      name: match[1],
+      in: 'path',
+      required: true,
+      schema: { type: 'string' },
+    });
+  }
+  return params;
+}
+
+/**
+ * Check if a route uses authenticate middleware
+ *
+ * @param {Object[]} middleware - Array of middleware functions
+ * @returns {boolean}
+ */
+function requiresAuth(middleware) {
+  return middleware.some((mw) => typeof mw === 'function' && mw.name === 'authenticate');
 }
 
 /**
@@ -66,12 +122,12 @@ function deriveTag(routePath) {
  * @returns {Object} OpenAPI paths object
  */
 function generatePaths(options = {}) {
-  const routesDir = options.routesDir || path.join(__dirname, '..', 'routes', 'api');
+  const routesDir = options.routesDir || path.join(__dirname, '..', 'routes', routePrefix.replace(/^\//, ''));
   const routes = collectRoutes(routesDir);
   const paths = { ...(options.manualPaths || {}) };
 
   for (const route of routes) {
-    const openapiPath = route.path;
+    const openapiPath = route.path.replace(/:(\w+)/g, '{$1}');
     const tag = deriveTag(route.path);
 
     if (!paths[openapiPath]) {
@@ -83,11 +139,23 @@ function generatePaths(options = {}) {
     const requestBody = docs.requestBody
       || (route.validationSchema ? requestBodyFromSchema(route.validationSchema) : undefined);
 
+    const parameters = [
+      ...extractPathParams(route.path),
+      ...(route.querySchema ? querySchemaToParameters(route.querySchema) : []),
+      ...(docs.parameters || []),
+    ];
+
+    const security = requiresAuth(route.middleware)
+      ? [{ bearerAuth: [] }, { cookieAuth: [] }]
+      : undefined;
+
     paths[openapiPath][route.method] = {
       tags: docs.tags || [tag],
       summary: docs.summary || `${route.method.toUpperCase()} ${route.path}`,
       description: docs.description || '',
+      ...(parameters.length ? { parameters } : {}),
       ...(requestBody ? { requestBody } : {}),
+      ...(security ? { security } : {}),
       responses: docs.responses || defaultResponses(route),
     };
   }

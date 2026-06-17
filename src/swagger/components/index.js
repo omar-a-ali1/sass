@@ -6,25 +6,31 @@
  * - Error response templates (400, 401, 409, 500)
  * - Request/response schemas (auto-generated from Joi + manual entity schemas)
  *
- * @module routes/swagger/components/index
+ * @module swagger/components/index
  */
 
 const j2s = require('joi-to-swagger');
-const RegisterUserSchema = require('../../../validation/auth/register');
-const LoginUserSchema = require('../../../validation/auth/login');
-const ForgotPasswordSchema = require('../../../validation/auth/forgotPassword');
-const ResetPasswordSchema = require('../../../validation/auth/resetPassword');
+const RegisterUserSchema = require('../../validation/auth/register');
+const LoginUserSchema = require('../../validation/auth/login');
+const ForgotPasswordSchema = require('../../validation/auth/forgotPassword');
+const ResetPasswordSchema = require('../../validation/auth/resetPassword');
 const baseResponses = require('./responses');
-const { modelSchemas } = require('../../../bootstrap/loadModels');
+const { modelSchemas } = require('../../bootstrap/loadModels');
 
 module.exports = {
-  /** Bearer JWT authentication scheme */
+  /** Authentication schemes */
   securitySchemes: {
     bearerAuth: {
       type: 'http',
       scheme: 'bearer',
       bearerFormat: 'JWT',
       description: 'Enter your JWT token to access protected microservices.'
+    },
+    cookieAuth: {
+      type: 'apiKey',
+      in: 'cookie',
+      name: 'token',
+      description: 'JWT stored in a cookie named "token". Sent automatically by the browser.'
     }
   },
 

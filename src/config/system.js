@@ -6,6 +6,29 @@ const SECURITY_DEFAULTS = {
   CORS_ALLOWED_HEADERS: ['Content-Type', 'Authorization', 'X-Request-ID']
 };
 
+/**
+ * Global middleware pipeline — order matters.
+ * Each key maps to a middleware instantiated in bootstrap/index.js.
+ */
+const MIDDLEWARE_PIPELINE = [
+  'favicon',
+  'helmet',
+  'cors',
+  'json',
+  'rateLimiter',
+  'tracer',
+  'injectServices',
+];
+
+/**
+ * Swagger documentation metadata
+ */
+const SWAGGER_CONFIG = {
+  title: 'SaaS Framework Custom Engine Architecture',
+  version: '1.0.0',
+  description: 'automated Open-API documentation layer compiled using centralized Mongoose & Joi Schemas.',
+};
+
 const HTTP_REQUESTS = {
   // 2xx Success
   200: {
@@ -75,5 +98,7 @@ const HTTP_REQUESTS = {
 
 module.exports = {
   SECURITY_DEFAULTS,
-  HTTP_REQUESTS
+  HTTP_REQUESTS,
+  MIDDLEWARE_PIPELINE,
+  SWAGGER_CONFIG,
 };
