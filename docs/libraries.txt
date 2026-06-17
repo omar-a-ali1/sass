@@ -6,3 +6,4 @@ jsonwebtoken
 socket.io
 helmet
 express-rate-limit
+cookie-parser

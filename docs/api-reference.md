@@ -62,7 +62,7 @@
 | `favicon` | `serve-favicon` | Serves favicon |
 | `helmet` | `helmet()` | Security headers |
 | `cors` | `cors(corsOptions)` | CORS |
-| `cookieParser` | `utils/cookieParser` | Parse `Cookie` header → `req.cookies` |
+| `cookieParser` | `cookie-parser()` | Parse `Cookie` header → `req.cookies` |
 | `json` | `express.json({ limit })` | Body parsing with configurable size limit |
 | `rateLimiter` | `express-rate-limit` | Global rate limiter |
 | `perfMonitor` | `middlewares/perfMonitor` | Response time tracking, metrics collection |
@@ -477,9 +477,9 @@ Maps `joiError.details[]` to `{ fieldName: [cleanedMessages] }`.
 
 Converts Mongoose doc to plain object, removes `password`, `__v`, and optional extra fields.
 
-### `src/utils/cookieParser.js`
+### `cookie-parser` (npm package)
 
-Zero-dependency cookie parser middleware. Parses `Cookie` header into `req.cookies`. Exports `parse(str)` for standalone use.
+The `cookie-parser` npm package is used to parse `Cookie` headers into `req.cookies`. It is invoked via `require('cookie-parser')()` in `bootstrap/index.js`. Note that the factory **must be called** — passing it directly to `app.use()` silently breaks request processing.
 
 ---
 

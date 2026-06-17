@@ -321,5 +321,5 @@ Middlewares:
   ├── middlewares/validation.js ──── utils/formatJoiErrors.js
   ├── middlewares/errorHandler.js ──── utils/logger.js
   ├── middlewares/perfMonitor.js
-  └── utils/cookieParser.js
+  └── cookie-parser (npm package, called in bootstrap/index.js)
 ```

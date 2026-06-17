@@ -18,7 +18,6 @@ const path = require('path');
 const favicon = require('serve-favicon');
 const cors = require('cors');
 const helmet = require('helmet');
-const swaggerUi = require('swagger-ui-express');
 
 const config = require('../config/environment');
 const { SWAGGER_CONFIG, MIDDLEWARE_PIPELINE } = require('../config/system');
@@ -34,15 +33,26 @@ const container = require('../services/container');
 /** 3. Build API router from auto-scanned route files */
 const { Router, routePrefix } = require('./loadRoutes');
 
-/** 4. Generate Swagger paths from route definitions */
-const { generatePaths } = require('./loadSwagger');
-const swaggerDoc = {
-  openapi: '3.0.0',
-  info: { ...SWAGGER_CONFIG },
-  servers: [{ url: routePrefix, description: 'Local Development Server' }],
-  paths: generatePaths(),
-  components: require('../swagger/components'),
-};
+/** 4. Generate Swagger paths from route definitions (non-production only) */
+let swaggerDoc = null;
+let serveSwaggerUi = null;
+let setupSwaggerUi = null;
+
+if (config.env !== 'production') {
+  const swaggerUi = require('swagger-ui-express');
+  const { generatePaths } = require('./loadSwagger');
+
+  swaggerDoc = {
+    openapi: '3.0.0',
+    info: { ...SWAGGER_CONFIG },
+    servers: [{ url: routePrefix, description: 'Local Development Server' }],
+    paths: generatePaths(),
+    components: require('../swagger/components'),
+  };
+
+  serveSwaggerUi = swaggerUi.serve;
+  setupSwaggerUi = swaggerUi.setup(swaggerDoc);
+}
 
 /** 5. Create Express app with configurable middleware pipeline */
 const app = express();
@@ -52,7 +62,7 @@ const middlewareMap = {
   favicon: favicon(path.join(__dirname, '..', '..', 'assets', 'favicon.ico')),
   helmet: helmetConfig,
   cors: cors(corsOptions),
-  cookieParser: require('cookie-parser'),
+  cookieParser: require('cookie-parser')(),
   json: express.json({ limit: config.bodyLimit }),
   rateLimiter,
   perfMonitor: require('../middlewares/perfMonitor').perfMonitor,
@@ -71,7 +81,9 @@ const healthRoutes = require('../routes/health');
 const fallback = require('../routes/defaults/fallback');
 
 app.get('/', (req, res) => res.json({ message: 'SASS work !' }));
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDoc));
+if (serveSwaggerUi && setupSwaggerUi) {
+  app.use('/api-docs', serveSwaggerUi, setupSwaggerUi);
+}
 app.use('/health', healthRoutes);
 app.use(routePrefix, Router);
 app.use(fallback);

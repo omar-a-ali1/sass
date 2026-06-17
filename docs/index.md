@@ -23,7 +23,7 @@
 - **Rate Limiter Factory**: [`src/middlewares/rateLimiter.js`](../src/middlewares/rateLimiter.js)
 - **Validation Middleware**: [`src/middlewares/validation.js`](../src/middlewares/validation.js)
 - **Perf Monitor**: [`src/middlewares/perfMonitor.js`](../src/middlewares/perfMonitor.js)
-- **Cookie Parser**: [`src/utils/cookieParser.js`](../src/utils/cookieParser.js)
+- **Cookie Parser**: `cookie-parser` (npm package)
 - **API Routes**: [`src/routes/api/v1/auth/`](../src/routes/api/v1/auth/)
 - **Error Base**: [`src/errors/appErrors.js`](../src/errors/appErrors.js)
 - **Logger**: [`src/utils/logger.js`](../src/utils/logger.js)
@@ -42,5 +42,5 @@
 - Configurable middleware pipeline, route prefix, and swagger info from config files
 - Performance monitoring with `/health/metrics` endpoint
 - Request body size limit configurable via `BODY_LIMIT` env var
-- Cookie parser middleware (zero-dep inline implementation)
-- 85+ integration tests across multiple suites
+- Cookie parser middleware (npm `cookie-parser` package)
+- 85 integration tests across 8 suites

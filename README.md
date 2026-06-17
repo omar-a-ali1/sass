@@ -26,8 +26,12 @@
 - **Per-Route Rate Limiting** — Configurable limits per endpoint via factory
 - **Auto-Discovery** — Models, routes, and Swagger docs auto-load from directory structure — zero manual wiring
 - **Auto-Swagger** — OpenAPI docs generated from route `docs` + auto-detected Joi body schemas + auto-detected query schemas + auto-detected `authenticate` middleware + auto-detected `:id` path params
+- **Swagger UI** — Interactive API docs at `/api-docs` (development only — zero dependencies loaded in production)
 - **Configurable Middleware Pipeline** — Ordered middleware array in config, injected at bootstrap
 - **Configurable Route Prefix** — `ROUTE_PREFIX` env var + matching folder under `routes/`
+- **Performance Monitoring** — In-memory metrics collection, exposed at `/health/metrics`
+- **Configurable Body Limit** — `BODY_LIMIT` env var controls max JSON request body size
+- **Cookie Parser** — npm `cookie-parser` for `req.cookies`
 - **Dynamic Routes** — Path params (`:id`) supported via route file export `path: '/:id'`
 - **Query Validation** — `validateQuery(joiSchema)` validates `req.query`, auto-documented in Swagger
 - **Typed Errors** — Consistent JSON error responses via error hierarchy
@@ -41,7 +45,7 @@
 ```
 ├── server.js                          # Entry point
 ├── src/
-│   ├── app.js                         # Express assembly (JSON parsing, CORS, cookie-parser, helmet)
+│   ├── app.js                         # Thin re-export of bootstrap/index.js
 │   ├── bootstrap/
 │   │   ├── index.js                   # Bootstrap orchestrator — builds Express app from config
 │   │   ├── loadModels.js              # Auto-scans src/models/, registers Mongoose models + converts to OpenAPI schemas
@@ -135,18 +139,19 @@ Backends are swappable by config:
 
 Defined in `src/config/system.js`:
 ```js
-MIDDLEWARE_PIPELINE: ['express.json', 'tracer', 'injectServices', 'routes', 'errorHandler']
+MIDDLEWARE_PIPELINE: ['favicon', 'helmet', 'cors', 'cookieParser', 'json', 'rateLimiter', 'perfMonitor', 'tracer', 'injectServices']
 ```
 
-`bootstrap/index.js` maps each key to a pre-instantiated middleware and calls `app.use()` in order.
+`bootstrap/index.js` maps each key to a pre-instantiated middleware and calls `app.use()` in order. Add new middleware by adding its key to this array and registering it in `middlewareMap`.
 
 ### Request Lifecycle
 
 ```
-Request → cookieParser → helmet → cors → [pipeline: json → tracer → injectServices → routes]
-  ├── rateLimiter (per-route)
-  ├── validation / validateQuery (Joi)
-  ├── authenticate + authorize (per-route, optional)
+Request → favicon → helmet → cors → cookieParser → json(limit) → rateLimiter
+  → perfMonitor → tracer → injectServices → routes → fallback → errorHandler
+  ├── rateLimiter (per-route, additional)
+  ├── validate / validateQuery (Joi, per-route)
+  ├── authenticate + authorize (JWT, per-route, optional)
   ├── controller → service → repository → strategy
   └── errorHandler (catches all)
 ```
@@ -233,7 +238,7 @@ module.exports = {
 | Config | File | Env Var | Default |
 |---|---|---|---|
 | Route prefix | `config/environment.js` | `ROUTE_PREFIX` | `/api/v1` |
-| Middleware pipeline | `config/system.js` | — | `['express.json', 'tracer', 'injectServices', 'routes', 'errorHandler']` |
+| Middleware pipeline | `config/system.js` | — | `['favicon', 'helmet', 'cors', 'cookieParser', 'json', 'rateLimiter', 'perfMonitor', 'tracer', 'injectServices']` |
 | Swagger metadata | `config/system.js` | — | `{ title: 'SASS API', version: '1.0.0', description: '...' }` |
 | Database driver | `config/environment.js` | `DB_DRIVER` | `mongo` |
 | Storage driver | `config/environment.js` | `STORAGE_DRIVER` | `local` |
