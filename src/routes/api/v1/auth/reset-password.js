@@ -4,10 +4,10 @@
  * @module routes/v1/auth/reset-password
  */
 
-const validateMiddleware = require('../../../middlewares/validation');
-const createRateLimiter = require('../../../middlewares/rateLimiter');
-const resetPasswordSchema = require('../../../validation/auth/resetPassword');
-const { resetPassword } = require('../../../controllers/auth.controller');
+const validateMiddleware = require('../../../../middlewares/validation');
+const createRateLimiter = require('../../../../middlewares/rateLimiter');
+const resetPasswordSchema = require('../../../../validation/auth/resetPassword');
+const { resetPassword } = require('../../../../controllers/auth.controller');
 
 const resetLimiter = createRateLimiter({
   windowMs: 60 * 1000,

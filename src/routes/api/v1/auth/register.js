@@ -4,10 +4,10 @@
  * @module routes/v1/auth/register
  */
 
-const validateMiddleware = require('../../../middlewares/validation');
-const createRateLimiter = require('../../../middlewares/rateLimiter');
-const registerSchema = require('../../../validation/auth/register');
-const { register } = require('../../../controllers/auth.controller');
+const validateMiddleware = require('../../../../middlewares/validation');
+const createRateLimiter = require('../../../../middlewares/rateLimiter');
+const registerSchema = require('../../../../validation/auth/register');
+const { register } = require('../../../../controllers/auth.controller');
 
 const registerLimiter = createRateLimiter({
   windowMs: 60 * 1000,

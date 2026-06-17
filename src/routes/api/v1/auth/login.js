@@ -1,32 +1,32 @@
 /**
- * POST /auth/refresh-token — exchange a refresh token for a new token pair
+ * POST /auth/login — authenticate and receive access + refresh tokens
  *
- * @module routes/v1/auth/refresh-token
+ * @module routes/v1/auth/login
  */
 
-const validateMiddleware = require('../../../middlewares/validation');
-const createRateLimiter = require('../../../middlewares/rateLimiter');
-const refreshTokenSchema = require('../../../validation/auth/refreshToken');
-const { refresh } = require('../../../controllers/auth.controller');
+const validateMiddleware = require('../../../../middlewares/validation');
+const createRateLimiter = require('../../../../middlewares/rateLimiter');
+const loginSchema = require('../../../../validation/auth/login');
+const { login } = require('../../../../controllers/auth.controller');
 
-const refreshLimiter = createRateLimiter({
+const loginLimiter = createRateLimiter({
   windowMs: 60 * 1000,
-  max: 20,
-  message: 'Too many refresh attempts, please try again later.',
+  max: 5,
+  message: 'Too many login attempts, please try again later.',
 });
 
 module.exports = {
   method: 'post',
-  path: '/refresh-token',
-  middleware: [refreshLimiter, validateMiddleware(refreshTokenSchema)],
-  handler: refresh,
+  path: '/login',
+  middleware: [loginLimiter, validateMiddleware(loginSchema)],
+  handler: login,
   docs: {
     tags: ['Authentication'],
-    summary: 'Refresh token pair',
-    description: 'Accepts a valid refresh token and returns a new access token + refresh token pair. Use this when the access token expires.',
+    summary: 'Login to the API',
+    description: 'Authenticates with email and password. Returns an access token, refresh token, and the sanitized user profile.',
     responses: {
-      200: {
-        description: 'Tokens refreshed successfully — returns new access and refresh tokens',
+      201: {
+        description: 'Authentication successful — returns access token, refresh token, and user profile',
         content: {
           'application/json': {
             schema: {

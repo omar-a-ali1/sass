@@ -55,9 +55,6 @@ const S3StorageStrategy = require('../strategies/storage/s3Storage.strategy');
 const ConsoleEmailStrategy = require('../strategies/email/consoleEmail.strategy');
 const StubEmailStrategy = require('../strategies/email/stubEmail.strategy');
 
-/** Auto-register all Mongoose models from src/models/ */
-require('../models/index');
-
 /** Database strategy — selected by config.database.driver */
 const dbDrivers = {
   mongo: () => new MongoStrategy(),

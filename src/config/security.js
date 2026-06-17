@@ -10,7 +10,7 @@
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const env = require('./environment');
-const { SECURITY_DEFAULTS } = require('../constants/system');
+const { SECURITY_DEFAULTS } = require('./system');
 
 /** Rate limiter: 15-minute window, max from env or defaults to 100 requests */
 const limiter = rateLimit({

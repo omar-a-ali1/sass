@@ -8,7 +8,7 @@
  * @module errors/appErrors
  */
 
-const {HTTP_REQUESTS} = require('../constants/system')
+const {HTTP_REQUESTS} = require('../config/system')
 
 class AppError extends Error
 {

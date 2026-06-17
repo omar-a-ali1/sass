@@ -13,7 +13,7 @@
  */
 
 const { verifyJwt } = require('../repositories/security.repository');
-const { HTTP_REQUESTS } = require('../constants/system');
+const { HTTP_REQUESTS } = require('../config/system');
 
 /**
  * Require a valid JWT for the route

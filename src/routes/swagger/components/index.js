@@ -15,7 +15,7 @@ const LoginUserSchema = require('../../../validation/auth/login');
 const ForgotPasswordSchema = require('../../../validation/auth/forgotPassword');
 const ResetPasswordSchema = require('../../../validation/auth/resetPassword');
 const baseResponses = require('./responses');
-const entitySchemas = require('../schemas');
+const { modelSchemas } = require('../../../bootstrap/loadModels');
 
 module.exports = {
   /** Bearer JWT authentication scheme */
@@ -42,7 +42,8 @@ module.exports = {
     /** Auto-generated from reset-password Joi schema */
     ResetPasswordRequest: j2s(ResetPasswordSchema).swagger,
 
-    ...entitySchemas,
+    /** Auto-generated from Mongoose models via mongoose-to-swagger */
+    ...modelSchemas,
 
     /** Inline user response shape (includes __v for debugging) */
     UserResponse: {

@@ -4,10 +4,10 @@
  * @module routes/v1/auth/forgot-password
  */
 
-const validateMiddleware = require('../../../middlewares/validation');
-const createRateLimiter = require('../../../middlewares/rateLimiter');
-const forgotPasswordSchema = require('../../../validation/auth/forgotPassword');
-const { forgotPassword } = require('../../../controllers/auth.controller');
+const validateMiddleware = require('../../../../middlewares/validation');
+const createRateLimiter = require('../../../../middlewares/rateLimiter');
+const forgotPasswordSchema = require('../../../../validation/auth/forgotPassword');
+const { forgotPassword } = require('../../../../controllers/auth.controller');
 
 const forgotLimiter = createRateLimiter({
   windowMs: 60 * 1000,

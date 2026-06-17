@@ -1,18 +1,18 @@
 /**
- * Recursive Route Loader
+ * Route Auto-Loader
  *
- * Scans `src/routes/v1/` directories and builds an Express router
- * from route definition files. Each file exports a route config:
+ * Recursively scans a route directory and builds an Express router
+ * from route definition files. Each file exports:
  *
  *   module.exports = {
- *     method: 'post',                     // HTTP method (required)
- *     path: '/login',                      // URL path relative to the dir (required)
- *     middleware: [rateLimiter, validate],  // Optional middleware array
- *     handler: controllerMethod,           // Route handler function (required)
- *     docs: { tags, summary, requestBody, responses }  // Optional Swagger doc
+ *     method,        // HTTP method (required)
+ *     path,          // URL path relative to the dir (required)
+ *     middleware[],  // Optional middleware
+ *     handler,       // Route handler (required)
+ *     docs           // Optional Swagger doc
  *   };
  *
- * @module routes/v1/loader
+ * @module bootstrap/loadRoutes
  */
 
 const fs = require('fs');
@@ -21,19 +21,19 @@ const express = require('express');
 
 /**
  * @typedef {Object} RouteDef
- * @property {string}   method     - HTTP method (lowercase)
- * @property {string}   path       - URL path (e.g. /auth/login)
- * @property {Function[]} middleware - Express middleware array
- * @property {Function} handler    - Route handler
- * @property {Object}   [docs]     - Optional Swagger/OpenAPI documentation
- * @property {Object}   [validationSchema] - Joi schema auto-detected from middleware
+ * @property {string}   method
+ * @property {string}   path
+ * @property {Function[]} middleware
+ * @property {Function} handler
+ * @property {Object}   [docs]
+ * @property {Object}   [validationSchema]
  */
 
 /**
- * Recursively scan a directory and collect all route definitions
+ * Recursively scan a directory and collect route definitions
  *
- * @param {string} dir     - Directory to scan (absolute path)
- * @param {string} basePath - Accumulated URL prefix from parent directories
+ * @param {string} dir      - Directory to scan
+ * @param {string} basePath - Accumulated URL prefix
  * @returns {RouteDef[]}
  */
 function collectRoutes(dir, basePath = '') {
@@ -49,8 +49,6 @@ function collectRoutes(dir, basePath = '') {
     if (entry.isDirectory()) {
       routes = routes.concat(collectRoutes(fullPath, `${basePath}/${entry.name}`));
     } else if (entry.isFile() && entry.name.endsWith('.js')) {
-      if (entry.name === 'index.js' || entry.name === 'loader.js') continue;
-
       const def = require(fullPath);
       if (!def || !def.method || !def.handler) continue;
 
@@ -78,10 +76,10 @@ function collectRoutes(dir, basePath = '') {
 /**
  * Build an Express router from route definitions in the given directory
  *
- * @param {string} dir - Directory to scan (defaults to __dirname)
+ * @param {string} dir - Directory to scan
  * @returns {import('express').Router}
  */
-function buildRouter(dir = __dirname) {
+function buildRouter(dir) {
   const router = express.Router();
   const routes = collectRoutes(dir);
 
@@ -94,4 +92,9 @@ function buildRouter(dir = __dirname) {
   return router;
 }
 
-module.exports = { collectRoutes, buildRouter };
+const routesDir = path.join(__dirname, '..', 'routes', 'api');
+
+/** Pre-built  router — auto-loaded at import time */
+const Router = buildRouter(routesDir);
+
+module.exports = { collectRoutes, buildRouter, Router };

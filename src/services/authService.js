@@ -11,7 +11,7 @@
 const ConflictError = require("../errors/ConflictError");
 const UnauthorizedError = require('../errors/UnauthorizedError')
 const NotFoundError = require('../errors/NotFoundError')
-const sanitizeData = require('../helpers/sanitizeData');
+const sanitizeData = require('../utils/sanitizeData');
 
 class AuthService
 {

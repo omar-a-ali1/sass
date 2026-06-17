@@ -9,7 +9,7 @@
  */
 
 const logger = require('../utils/logger');
-const { HTTP_REQUESTS } = require('../constants/system');
+const { HTTP_REQUESTS } = require('../config/system');
 
 /**
  * Express error-handling middleware (4 arguments)

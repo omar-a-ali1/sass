@@ -4,9 +4,9 @@
  * @module routes/v1/auth/me
  */
 
-const authenticate = require('../../../middlewares/auth');
-const authorize = require('../../../middlewares/authorize');
-const { getProfile } = require('../../../controllers/auth.controller');
+const authenticate = require('../../../../middlewares/auth');
+const authorize = require('../../../../middlewares/authorize');
+const { getProfile } = require('../../../../controllers/auth.controller');
 
 module.exports = {
   method: 'get',

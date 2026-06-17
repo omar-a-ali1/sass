@@ -1,25 +1,21 @@
 /**
- * Swagger Documentation Auto-Loader
+ * Swagger Docs Auto-Generator
  *
- * Scans all route definition files via `collectRoutes` and auto-generates
- * OpenAPI path documentation. Each route file can optionally export a
- * `docs` property for full customization. When docs are omitted, sensible
- * defaults are used.
+ * Generates OpenAPI path documentation from route definition files
+ * using their `docs` exports and auto-detected Joi schemas.
  *
- * Manual path overrides can be passed to merge with auto-generated docs.
- *
- * @module routes/swagger/loader
+ * @module bootstrap/loadSwagger
  */
 
-const { collectRoutes } = require('../v1/loader');
 const j2s = require('joi-to-swagger');
 const path = require('path');
+const { collectRoutes } = require('./loadRoutes');
 
 /**
  * Build an OpenAPI requestBody from a Joi schema
  *
- * @param {import('joi').ObjectSchema} schema - Joi validation schema
- * @returns {Object} OpenAPI requestBody object
+ * @param {import('joi').ObjectSchema} schema
+ * @returns {Object}
  */
 function requestBodyFromSchema(schema) {
   const { swagger } = j2s(schema);
@@ -32,10 +28,10 @@ function requestBodyFromSchema(schema) {
 }
 
 /**
- * Build a default response set for a route
+ * Build default response set for a route
  *
- * @param {Object} route - Route definition
- * @returns {Object} OpenAPI responses object
+ * @param {Object} route
+ * @returns {Object}
  */
 function defaultResponses(route) {
   const successCode = route.method === 'post' ? 201 : 200;
@@ -51,9 +47,9 @@ function defaultResponses(route) {
 }
 
 /**
- * Derive a tag name from the route path (first path segment)
+ * Derive a tag from the route path (first segment)
  *
- * @param {string} routePath - e.g. /auth/login
+ * @param {string} routePath
  * @returns {string}
  */
 function deriveTag(routePath) {
@@ -62,16 +58,15 @@ function deriveTag(routePath) {
 }
 
 /**
- * Auto-generate OpenAPI paths from route definitions, merged with
- * any manual path overrides.
+ * Generate OpenAPI paths from route definitions
  *
  * @param {Object}  [options]
- * @param {string}  [options.routesDir]      - Directory to scan for routes (default: v1 directory)
- * @param {Object}  [options.manualPaths]    - Additional or overriding path definitions
+ * @param {string}  [options.routesDir]
+ * @param {Object}  [options.manualPaths]
  * @returns {Object} OpenAPI paths object
  */
 function generatePaths(options = {}) {
-  const routesDir = options.routesDir || path.join(__dirname, '..', 'v1');
+  const routesDir = options.routesDir || path.join(__dirname, '..', 'routes', 'api');
   const routes = collectRoutes(routesDir);
   const paths = { ...(options.manualPaths || {}) };
 
@@ -85,7 +80,6 @@ function generatePaths(options = {}) {
 
     const docs = route.docs || {};
 
-    /** Auto-generate requestBody from Joi schema when docs don't provide one */
     const requestBody = docs.requestBody
       || (route.validationSchema ? requestBodyFromSchema(route.validationSchema) : undefined);
 

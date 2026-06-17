@@ -14,8 +14,8 @@
  */
 
 const ValidationError = require('../errors/ValidationError');
-const formatJoiErrors = require('../helpers/formatJoiErrors');
-const { HTTP_REQUESTS } = require('../constants/system');
+const formatJoiErrors = require('../utils/formatJoiErrors');
+const { HTTP_REQUESTS } = require('../config/system');
 
 /**
  * Create a validation middleware for a given Joi schema
