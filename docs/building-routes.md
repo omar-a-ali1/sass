@@ -67,118 +67,108 @@ Later, when the route gains validation, error handling, or DB access, refactor i
 
 ---
 
-## Professional Way — Full Framework Stack
+## Professional Way — CLI Scaffolding
 
 Best for: production endpoints, complex business logic, team projects.
+
+The framework ships with a Laravel-style scaffold generator. One command generates all the layers — you just fill in the business logic.
 
 ### Architecture chain
 
 ```
-route file (src/routes/.../*.js)
+route file (src/routes/.../*.js)          ← npm run make:route
   ├── middleware (validation, auth, rate limiting)
-  └── controller (src/controllers/*.controller.js)
-       └── service (src/services/*Service.js)
-            └── repository (src/repositories/*.repository.js)
-                 └── strategy (src/strategies/database/*.strategy.js)
+  └── controller (src/controllers/)       ← npm run make:controller
+       └── service (src/services/)        ← npm run make:service
+            └── repository (src/repositories/)   ← npm run make:repository
+                 └── strategy (src/strategies/)
 ```
 
-Each layer has one responsibility and is independently testable.
+Each layer is auto-discovered by the IoC container — zero manual wiring.
 
-### Step-by-step: building a `/products` endpoint
+### One-command: `make:all`
 
-#### 1. Validation schema
+```bash
+npm run make:all -- Product
+```
+
+This creates everything except routes:
+
+| Artifact | File | What it gives you |
+|---|---|---|
+| Validation | `src/validation/product/{create,update,list}.js` | Joi schemas for body + query |
+| Model | `src/models/Product.js` | Mongoose schema |
+| Repository | `src/repositories/product.repository.js` | CRUD methods via `dbStrategy` |
+| Service | `src/services/productService.js` | Business logic layer with DI |
+| Controller | `src/controllers/product.controller.js` | `list`, `get`, `create`, `update`, `destroy` handlers |
+
+Then generate the route files:
+
+```bash
+npm run make:route -- Product
+```
+
+This creates 5 route files at `src/routes/api/v1/product/`:
+
+| File | Method | Path | Auth |
+|---|---|---|---|
+| `create.js` | `POST` | `/` | Validation |
+| `list.js` | `GET` | `/` | Query validation |
+| `get.js` | `GET` | `/:id` | `authenticate` |
+| `update.js` | `PUT` | `/:id` | `authenticate` + Validation |
+| `delete.js` | `DELETE` | `/:id` | `authenticate` |
+
+**That's it.** Restart the server — `GET /api/v1/products`, `POST /api/v1/products`, etc. are live with Swagger docs, validation, and error handling.
+
+### What the scaffold produces
+
+Each generated file is a ready-to-use template. Here's what they look like:
+
+#### Validation schema (`src/validation/product/create.js`)
 
 ```js
-// src/validation/product/create.js
 const Joi = require('joi');
-
 module.exports = Joi.object({
   name: Joi.string().min(2).max(100).required(),
   price: Joi.number().positive().required(),
-  description: Joi.string().max(1000).optional(),
 });
 ```
 
-#### 2. Repository
+#### Repository (`src/repositories/product.repository.js`)
 
 ```js
-// src/repositories/product.repository.js
 class ProductRepository {
-  constructor({ dbStrategy }) {
-    this.db = dbStrategy;
-  }
-
-  async create(data) {
-    return this.db.create('Product', data);
-  }
-
-  async findById(id) {
-    return this.db.findById('Product', id);
-  }
-
-  async paginate(query, opts) {
-    return this.db.paginate('Product', query, opts);
-  }
+  constructor({ dbStrategy }) { this.db = dbStrategy; }
+  async create(data)         { return this.db.create('Product', data); }
+  async findById(id)         { return this.db.findById('Product', id); }
+  async paginate(query, opts){ return this.db.paginate('Product', query, opts); }
 }
-
 module.exports = ProductRepository;
 ```
 
-The container auto-discovers this file and injects `dbStrategy`.
+The container auto-injects `dbStrategy`.
 
-#### 3. Service
+#### Service (`src/services/productService.js`)
 
 ```js
-// src/services/productService.js
-const { NotFoundError } = require('../errors/appErrors');
-
 class ProductService {
-  constructor({ productRepository }) {
-    this.repo = productRepository;
-  }
-
-  async create(data) {
-    return this.repo.create(data);
-  }
-
+  constructor({ productRepository }) { this.repo = productRepository; }
+  async create(data) { return this.repo.create(data); }
   async get(id) {
     const product = await this.repo.findById(id);
-    if (!product) throw new NotFoundError(`Product ${id} not found`);
+    if (!product) throw new NotFoundError(\`Product \${id} not found\`);
     return product;
   }
-
-  async list(query) {
-    const page = Math.max(parseInt(query.page, 10) || 1, 1);
-    const limit = Math.min(parseInt(query.limit, 10) || 20, 100);
-    return this.repo.paginate({}, { page, limit });
-  }
+  async list(query) { /* pagination logic */ }
 }
-
 module.exports = ProductService;
 ```
 
-The container auto-discovers this file and injects `productRepository`.
+The container auto-injects `productRepository`.
 
-#### 4. Controller
+#### Controller (`src/controllers/product.controller.js`)
 
 ```js
-// src/controllers/product.controller.js
-const create = async (req, res, next) => {
-  try {
-    const svc = req.getService('productService');
-    const data = await svc.create(req.validatedBody);
-    return res.respond(data, 201);
-  } catch (err) { next(err); }
-};
-
-const get = async (req, res, next) => {
-  try {
-    const svc = req.getService('productService');
-    const data = await svc.get(req.params.id);
-    return res.respond(data);
-  } catch (err) { next(err); }
-};
-
 const list = async (req, res, next) => {
   try {
     const svc = req.getService('productService');
@@ -186,16 +176,13 @@ const list = async (req, res, next) => {
     return res.paginated(data);
   } catch (err) { next(err); }
 };
-
-module.exports = { create, get, list };
+// + get, create, update, destroy with the same pattern
+module.exports = { list, get, create, update, destroy };
 ```
 
-#### 5. Route files
-
-Drop them in `src/routes/api/v1/products/`:
+#### Route file (`src/routes/api/v1/product/create.js`)
 
 ```js
-// src/routes/api/v1/products/create.js
 const validate = require('../../../../middlewares/validation');
 const schema = require('../../../../validation/product/create');
 const { create } = require('../../../../controllers/product.controller');
@@ -206,65 +193,37 @@ module.exports = {
   middleware: [validate(schema)],
   handler: create,
   docs: {
-    tags: ['Products'],
+    tags: ['Product'],
     summary: 'Create a new product',
-    responses: {
-      201: { description: 'Product created' },
-      400: { $ref: '#/components/responses/ValidationError' },
-    },
+    responses: { 201: { description: 'Product created' } },
   },
 };
 ```
 
-```js
-// src/routes/api/v1/products/get.js
-const authenticate = require('../../../../middlewares/auth');
-const { get } = require('../../../../controllers/product.controller');
+### Customizing the scaffold
 
-module.exports = {
-  method: 'get',
-  path: '/:id',
-  middleware: [authenticate],
-  handler: get,
-  docs: {
-    tags: ['Products'],
-    summary: 'Get product by ID',
-    responses: {
-      200: { description: 'Product found' },
-      404: { $ref: '#/components/responses/NotFoundError' },
-    },
-  },
-};
-```
+The generated files are templates — edit them to add real business logic:
 
-```js
-// src/routes/api/v1/products/list.js
-const { validateQuery } = require('../../../../middlewares/validation');
-const querySchema = require('../../../../validation/product/list');
-const { list } = require('../../../../controllers/product.controller');
+- **Validation**: add your fields to the Joi schema
+- **Service**: add business rules, error throwing, orchestration
+- **Repository**: add custom queries (e.g. `findByPriceRange`)
+- **Route**: adjust middleware, add per-route rate limiting, expand Swagger docs
+- **Model**: add fields, indexes, virtuals
 
-module.exports = {
-  method: 'get',
-  path: '/',
-  middleware: [validateQuery(querySchema)],
-  handler: list,
-  docs: {
-    tags: ['Products'],
-    summary: 'List products with pagination',
-    responses: {
-      200: { description: 'Paginated list' },
-    },
-  },
-};
-```
+### Individual commands
 
-#### 6. Scaffold (shortcut)
+Build incrementally — use only what you need:
 
 ```bash
-npm run make:all Product
+npm run make:validation -- Product    # src/validation/product/{create,update,list}.js
+npm run make:model -- Product         # src/models/Product.js
+npm run make:repository -- Product    # src/repositories/product.repository.js
+npm run make:service -- Product       # src/services/productService.js
+npm run make:controller -- Product    # src/controllers/product.controller.js
+npm run make:route -- Product         # src/routes/api/v1/product/{create,list,get,update,delete}.js
 ```
 
-This generates the validation, model, repository, service, controller, and 5 CRUD route files automatically.
+All commands are safe to re-run — they skip existing files.
 
 ---
 
@@ -281,7 +240,8 @@ This generates the validation, model, repository, service, controller, and 5 CRU
 | **DB engine switch** | Rewrite every query | Change config driver |
 | **Testability** | Requires HTTP server | Mock the service/repository |
 | **Swagger docs** | None | Auto-detected from middleware + `docs` |
-| **Files to create** | 1 (route) | Up to 5 (validation, repo, service, controller, route) |
+| **Files to create** | 1 (route file) | 0 — `npm run make:all -- Product` generates them |
+| **CLI needed** | None | `npm run make:all` + `npm run make:route` |
 
 ---
 
@@ -295,4 +255,4 @@ Ask yourself:
 - **Does it return errors?** → use `AppError` subclasses
 - **Does it need docs?** → fill out `docs` field
 
-A common workflow: prototype the junior way, then in the same PR refactor to the professional stack before merging. The route file's `module.exports` contract never changes — only the handler implementation does.
+A common workflow: prototype the junior way, then in the same PR refactor to the professional stack before merging. Run `npm run make:all` to scaffold the layers, then move your logic from the inline handler into the service/controller. The route file's `module.exports` contract never changes — only the handler implementation does.
