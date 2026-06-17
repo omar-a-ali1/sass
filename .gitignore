@@ -1,4 +1,11 @@
-*.env
+# Local environment files
+.env
+.env.development
+.env.production
+
+# Dependencies
 /node_modules
+
+# Uploads
 /storage
 /upload
