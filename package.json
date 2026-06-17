@@ -14,7 +14,8 @@
     "make:repository": "node cli/make.js repository",
     "make:validation": "node cli/make.js validation",
     "make:model": "node cli/make.js model",
-    "make:all": "node cli/make.js all"
+    "make:all": "node cli/make.js all",
+    "routes": "node cli/list-routes.js"
   },
   "author": "OMAR AIT ALI",
   "license": "MIT",
