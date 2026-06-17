@@ -57,14 +57,17 @@ All 8 test suites pass (85 tests total):
 | IoC container | ✅ Complete | DI via constructor injection |
 | CLI scaffolding | ✅ Complete | `npm run make:controller|route|service|repository|validation|model|seeder|all` |
 | Route lister | ✅ Complete | `npm run routes` — colour-coded methods, clickable URL, middleware chain |
+| Docker CLI | ✅ Complete | Predefined `docker-cli/{dev,test,seed}.sh` with Compose health checks |
 | Documentation | ✅ Complete | 7 doc files, README, advancement report |
 
 ---
 
 ## 4. Architecture Summary
 
+> **Note**: `server.js` is the developer entry point — designed to be modified per-project. It connects to the database, starts the HTTP server, and wires Socket.IO. Developers can add custom initialisation logic (e.g., connect additional services, load middleware, configure clusters) without modifying the bootstrap layer.
+
 ```
-server.js
+server.js                       ← Developer entry point (customisable)
   └── bootstrap/index.js          ← Express app assembly
        ├── loadModels.js           ← Auto-loads Mongoose models
        ├── services/container.js   ← IoC container (strategies → repos → services)
@@ -91,17 +94,7 @@ Upload routes use the two-step pipeline: `upload({ field })` → `[multer, persi
 - **Socket.IO in `server.js`**: Socket.IO is configured but no application-level socket events are defined beyond connect/disconnect logging. This is a placeholder for real-time features.
 - **Multer install**: The upload middleware lazily `require('multer')` — throws a clear error if the package is missing. The package is already listed in `package.json` dependencies.
 
-## 6. What's Next (Medium Priority)
-
-| Gap | Why it matters |
-|---|---|
-| Event emitter / internal bus | Socket.IO is a placeholder; no decoupled event-driven logic |
-| CI/CD config (GitHub Actions) | Tests must be run manually |
-| PM2 `ecosystem.config.js` | No production process manager |
-
----
-
-## 7. Seeder CLI
+## 6. Seeder CLI
 
 ```bash
 # Seed all (development environment)
@@ -130,13 +123,9 @@ module.exports = {
   },
 };
 ```
-
 ---
 
-
-
-## 8. Quick Start
-
+## 7. Quick Start
 ```bash
 cp .env.development.example .env.development
 npm install

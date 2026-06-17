@@ -1,4 +1,4 @@
-express-js
+express
 joi
 winston
 morgan
@@ -7,3 +7,19 @@ socket.io
 helmet
 express-rate-limit
 cookie-parser
+bcrypt
+mongoose
+multer
+joi-to-swagger
+mongoose-to-swagger
+swagger-ui-express
+cors
+dotenv
+serve-favicon
+cross-env
+
+# Dev
+jest
+nodemon
+@faker-js/faker
+supertest

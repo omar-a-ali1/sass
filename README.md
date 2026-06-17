@@ -50,7 +50,7 @@
 ## Project Structure
 
 ```
-├── server.js                          # Entry point — DB connect, server start
+├── server.js                          # Developer entry point — customisable per project
 ├── cli/
 │   ├── make.js                        # Scaffold generator (make:* commands)
 │   ├── list-routes.js                 # Route lister (npm run routes)
@@ -210,11 +210,16 @@ npm run dev
 ```
 
 ```bash
-# Docker
+# Docker (predefined scripts with MongoDB health checks)
+bash docker-cli/dev.sh                # Dev server + MongoDB
+bash docker-cli/test.sh               # Run tests in container
+bash docker-cli/seed.sh               # Seed database in dev container
+
+# Or directly with Docker Compose
 docker compose up app_dev mongodb_dev
 
 # Tests
-npm test                          # 85 tests, 8 suites
+npm test                              # 85 tests, 8 suites
 docker compose up mongodb_test app_test
 ```
 

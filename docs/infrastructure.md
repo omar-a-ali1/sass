@@ -69,19 +69,32 @@ Network: `sass_network` (bridge driver)
 
 ---
 
-## Command Scripts
+## Docker CLI — Predefined Scripts
 
-### `command/dev.sh`
+Convenience scripts in [`docker-cli/`](../docker-cli) wrap common Docker Compose workflows:
+
+| Script | Command | Description |
+|---|---|---|
+| `dev.sh` | `bash docker-cli/dev.sh` | Start development app + MongoDB (live-reload) |
+| `test.sh` | `bash docker-cli/test.sh` | Start test MongoDB + run all tests |
+| `seed.sh` | `bash docker-cli/seed.sh` | Run seeders inside the running dev container |
+
+All scripts rely on Docker Compose health checks — the app won't start until MongoDB is healthy.
+
+### `docker-cli/dev.sh`
 ```bash
 docker compose up app_dev mongodb_dev
 ```
-Starts development app + MongoDB stack.
 
-### `command/test.sh`
+### `docker-cli/test.sh`
 ```bash
 docker compose up mongodb_test app_test
 ```
-Starts test MongoDB + runs test suite.
+
+### `docker-cli/seed.sh`
+```bash
+docker exec -it sass-app-dev npm run seed
+```
 
 ---
 

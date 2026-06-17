@@ -14,7 +14,10 @@ const { listUsers } = require('../../../../controllers/user.controller');
 module.exports = {
   method: 'get',
   path: '/',
-  middleware: [authenticate, validateMiddleware.validateQuery(listUsersQuery)],
+  middleware: [
+    // authenticate,
+    validateMiddleware.validateQuery(listUsersQuery)
+  ],
   handler: listUsers,
   docs: {
     tags: ['Users'],

@@ -1,6 +1,9 @@
 # SASS Framework — Documentation Index
 
-> **S**calable **A**rchitecture for **S**erver-side **S**ystems
+> **Version**: 1.0.0 &middot; **Status**: Stable
+>
+> **S**calable **A**rchitecture for **S**erver-side **S**ystems  
+> A production-ready Node.js + Express mini-framework with DI container, strategy pattern, JWT auth, auto-discovery, CLI scaffolding, and seeder system.
 
 ## Documents
 
@@ -8,6 +11,7 @@
 |---|---|
 | [API Reference](api-reference.md) | Complete function-by-function reference for every file in the codebase |
 | [Architecture & Patterns](architecture-patterns.md) | Architectural design, 5 core patterns, end-to-end request lifecycle, dependency graph |
+| [CLI Reference](cli-reference.md) | All npm scripts (`make:*`, `routes`, `seed`) and Docker CLI commands |
 | [Infrastructure & DevOps](infrastructure.md) | Docker multi-stage build, Docker Compose, environment config, logging system, scripts |
 
 ## Quick Links
@@ -44,3 +48,12 @@
 - Request body size limit configurable via `BODY_LIMIT` env var
 - Cookie parser middleware (npm `cookie-parser` package)
 - 85 integration tests across 8 suites
+
+## CLI & Docker
+
+The framework ships with two command interfaces:
+
+- **npm scripts** — `npm run make:*`, `npm run routes`, `npm run seed` — for direct host usage
+- **Docker CLI** — `bash docker-cli/{dev,test,seed}.sh` — predefined Compose workflows with MongoDB health checks
+
+See the [CLI Reference](cli-reference.md) for the full command catalogue.

@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 
 const path = require('path');
-
 process.env.NODE_ENV = process.env.NODE_ENV || 'development';
 
 if (process.env.NODE_ENV === 'production') {
@@ -55,6 +54,7 @@ function parseArgs() {
   try {
     await connectDB();
   } catch (err) {
+    logger.error(`✖ Database connection failed: ${err.message}`)
     console.error(`\n  ✖ Database connection failed: ${err.message}`);
     console.error('  Check that MongoDB is running and MONGO_URI is correct.\n');
     process.exit(1);
