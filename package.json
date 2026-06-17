@@ -6,7 +6,15 @@
   "scripts": {
     "test": "cross-env NODE_ENV=test jest --runInBand --detectOpenHandles",
     "dev": "cross-env NODE_ENV=development nodemon server.js",
-    "start": "cross-env NODE_ENV=production node server.js"
+    "start": "cross-env NODE_ENV=production node server.js",
+    "generate": "node cli/make.js all",
+    "make:controller": "node cli/make.js controller",
+    "make:route": "node cli/make.js route",
+    "make:service": "node cli/make.js service",
+    "make:repository": "node cli/make.js repository",
+    "make:validation": "node cli/make.js validation",
+    "make:model": "node cli/make.js model",
+    "make:all": "node cli/make.js all"
   },
   "author": "OMAR AIT ALI",
   "license": "MIT",
