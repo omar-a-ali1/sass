@@ -63,9 +63,11 @@ Network: `sass_network` (bridge driver)
 ### Volumes
 
 | Volume | Description |
-|---|---|
+|---|---|---|
 | `mongo_dev_data` | Persists development MongoDB data |
 | `mongo_test_data` | Persists test MongoDB data |
+| `pg_dev_data` | Persists development PostgreSQL data |
+| `pg_test_data` | Persists test PostgreSQL data |
 
 ---
 
@@ -75,15 +77,23 @@ Convenience scripts in [`docker-cli/`](../docker-cli) wrap common Docker Compose
 
 | Script | Command | Description |
 |---|---|---|
-| `dev.sh` | `bash docker-cli/dev.sh` | Start development app + MongoDB (live-reload) |
-| `test.sh` | `bash docker-cli/test.sh` | Start test MongoDB + run all tests |
-| `seed.sh` | `bash docker-cli/seed.sh` | Run seeders inside the running dev container |
+| `dev.sh` | `bash docker-cli/dev.sh` | Start dev app + MongoDB + PostgreSQL (live-reload) |
+| `dev-postgres.sh` | `bash docker-cli/dev-postgres.sh` | Start dev app + PostgreSQL only |
+| `test.sh` | `bash docker-cli/test.sh` | Start test DBs + run all tests |
+| `seed.sh` | `bash docker-cli/seed.sh [--clean] [--only name]` | Seed database (forwards `$@` to container) |
+| `models.sh` | `bash docker-cli/models.sh` | Show models and columns from dev container |
+| `fetch.sh` | `bash docker-cli/fetch.sh User --limit 5` | Query records from dev container (forwards `$@`) |
 
 All scripts rely on Docker Compose health checks — the app won't start until MongoDB is healthy.
 
 ### `docker-cli/dev.sh`
 ```bash
-docker compose up app_dev mongodb_dev
+docker compose up app_dev mongodb_dev postgres_dev
+```
+
+### `docker-cli/dev-postgres.sh`
+```bash
+docker compose up app_dev postgres_dev
 ```
 
 ### `docker-cli/test.sh`
@@ -93,7 +103,19 @@ docker compose up mongodb_test app_test
 
 ### `docker-cli/seed.sh`
 ```bash
-docker exec -it sass-app-dev npm run seed
+# Passes all arguments through to the seed CLI
+docker exec -it sass-app-dev npm run seed -- "$@"
+```
+
+### `docker-cli/models.sh`
+```bash
+docker exec -it sass-app-dev npm run models
+```
+
+### `docker-cli/fetch.sh`
+```bash
+# Passes all arguments through to the fetch CLI
+docker exec -it sass-app-dev npm run fetch -- "$@"
 ```
 
 ---
@@ -128,6 +150,7 @@ Missing any throws: `[CRITICAL CONFIG ERROR]: Missing environment variable [KEY]
 | `PORT` | `3000` | HTTP server port |
 | `BODY_LIMIT` | `1mb` | Maximum JSON request body size |
 | `MONGO_URI` | `mongodb://localhost:27017/myapp_dev` | MongoDB connection string |
+| `POSTGRES_URI` | `postgres://sass:sass@localhost:5432/sass_dev` | PostgreSQL connection string |
 | `BCRPT_SALT_SIZE` | — | Bcrypt salt rounds |
 | `JWT_SECRET` | — | JWT signing secret |
 | `JWT_EXPIRES_IN` | `15m` | Access token expiry duration |
@@ -238,7 +261,10 @@ PERF_MONITOR_CONFIG: {
 |---|---|---|
 | `npm run dev` | `cross-env NODE_ENV=development nodemon server.js` | Dev server with hot-reload |
 | `npm start` | `cross-env NODE_ENV=production node server.js` | Production server |
-| `npm test` | `cross-env NODE_ENV=test jest --runInBand --detectOpenHandles` | Run Jest tests |
+| `npm test` | `cross-env NODE_ENV=test jest --runInBand --detectOpenHandles` | Run Jest tests (100 across 9 suites) |
+| `npm run seed` | `node cli/seed.js` | Run database seeders (driver-aware) |
+| `npm run models` | `node cli/list-models.js` | List models, tables, and column types |
+| `npm run fetch` | `node cli/fetch.js` | Query database records |
 
 ---
 

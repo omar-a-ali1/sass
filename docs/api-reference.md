@@ -16,9 +16,10 @@
 10. [Services (IoC Container)](#10-services)
 11. [Strategies](#11-strategies)
 12. [Swagger / OpenAPI](#12-swagger--openapi)
-13. [Utils](#13-utils)
-14. [Validation Schemas](#14-validation-schemas)
-15. [Tests](#15-tests)
+13. [CLI Tools](#13-cli-tools)
+14. [Utils](#14-utils)
+15. [Validation Schemas](#15-validation-schemas)
+16. [Tests](#16-tests)
 
 ---
 
@@ -86,8 +87,11 @@ Scans `src/models/` for `.js` files, `require()`s each one. Each model's `mongoo
 
 | Export | Description |
 |---|---|
-| `run(options)` | Discovers `*.seeder.js` files in `src/seeders/`, runs each. `options.clean` drops collections first. `options.only` filters to a single seeder. |
+| `run(options)` | Discovers `*.seeder.js` files in `src/seeders/`, runs each. `options.clean` drops collections first. `options.only` filters to a single seeder. Accepts optional `strategy` for driver-aware mode. |
+| `runSeedersPg(seeders, { clean, strategy })` | Runs seeders using strategy methods: `strategy.truncate(model)` + `strategy.insertMany(model, docs)`. |
 | `discoverSeeders(only)` | Returns `[{ name, def }]` for each seeder file. |
+
+When a `strategy` option is passed, seeders use `truncate()` + `insertMany()` on the strategy (used by PostgresStrategy). Without a strategy, seeders use Mongoose model directly (MongoDB mode).
 
 Each seeder file exports `{ model, count, generate(i) }`. Ran automatically in dev via `server.js` after DB connect.
 
@@ -112,6 +116,9 @@ Scan dir: `routes/` root — directory hierarchy maps to URL path (e.g. `routes/
 | Export | Description |
 |---|---|
 | `generatePaths(options)` | Scans route files, builds OpenAPI paths object |
+| `pickSuccessDefault(route)` | Returns `{ statusCode: { description } }` — uses the route's own declared `2xx` code if present, else infers from HTTP method |
+| `applyStandardErrorRefs(responses, route)` | After user merge, fills in missing standard codes: `400`/`500` always, `401`/`403` when `authenticate` middleware detected |
+| `mergeResponses(defaults, user)` | Deep overlay: route's `docs.responses` keys replace matching defaults |
 
 **Auto-detection features:**
 
@@ -121,8 +128,18 @@ Scan dir: `routes/` root — directory hierarchy maps to URL path (e.g. `routes/
 | Query schema | `middleware[i]._queryValidationSchema` | `parameters` with `in: query` |
 | Auth | `middleware[i].name === 'authenticate'` | `security: [{ bearerAuth: [] }, { cookieAuth: [] }]` |
 | Path params | `:param` in route path | `parameters` with `in: path` |
-| Tag | First URL segment | e.g. `/auth/login` → `Auth` |
-| Default responses | No `docs.responses` | `400` + `500` refs |
+| Tag | Parent folder name | e.g. `auth/login.js` → `Auth` |
+
+**Auto-added response codes** (route files no longer need to declare these):
+
+| Code | Component | Added when |
+|---|---|---|
+| `400` | `ValidationError` | **Every route** |
+| `500` | `InternalServerError` | **Every route** |
+| `401` | `UnauthorizedError` | Route uses `authenticate` middleware |
+| `403` | `ForbiddenError` | Route uses `authenticate` middleware |
+
+Error `$ref`s are applied **after** the user's `docs.responses` merge, so route files only need to declare custom success content and extra codes (404, 409, 503).
 
 Converts `:param` to `{param}` in OpenAPI path keys (e.g. `/users/:id` → `/users/{id}`).
 
@@ -473,8 +490,8 @@ To add a new repository or service, just drop the file in the correct directory 
 
 | Strategy | Status | Methods |
 |---|---|---|
-| `mongo.strategy.js` | **Full** | `create`, `findById`, `findOne`, `find`, `paginate`, `update`, `delete`, `count` |
-| `postgres.strategy.js` | **Full** | Same interface (+ `paginate`), lazy `pg.Pool`, parameterised queries |
+| `mongo.strategy.js` | **Full** | `create`, `findById`, `findOne`, `find`, `paginate`, `update`, `delete`, `count`, `truncate`, `insertMany` |
+| `postgres.strategy.js` | **Full** | Same interface + `truncate`, `insertMany`; lazy `pg.Pool`, parameterised queries |
 
 ### Storage Strategies
 
@@ -501,7 +518,7 @@ All strategy interfaces use `async` methods and receive config via constructor.
 | Section | Contents |
 |---|---|
 | `securitySchemes` | `bearerAuth` (HTTP Bearer), `cookieAuth` (API key in cookie `token`) |
-| `responses` | `ValidationError`, `ConflictError`, `UnauthorizedError`, `ForbiddenError`, `NotFoundError`, `InternalServerError` |
+| `responses` | `ValidationError`, `ConflictError`, `UnauthorizedError`, `ForbiddenError`, `NotFoundError`, `InternalServerError`, `ServiceUnavailableError` |
 | `schemas` | Auto-generated from Joi via `joi-to-swagger`, auto-generated from Mongoose models via `mongoose-to-swagger`, plus manual `UserResponse` |
 
 ### Auto-Generated from Route Files
@@ -510,7 +527,46 @@ Each route's `docs` property + auto-detected schemas produce OpenAPI path defini
 
 ---
 
-## 13. Utils
+## 13. CLI Tools
+
+### `cli/list-models.js` — Model Inspector
+
+**Purpose**: Lists every discovered model with its database table/collection and all column types.
+
+| Behaviour | Description |
+|---|---|
+| PostgreSQL | Queries `information_schema.columns` for real column names, types, nullability, and defaults |
+| MongoDB | Reads Mongoose `schema.paths` for field names, types, required flags, and default values |
+
+Outputs a colour-coded table with model name, table name, and per-column details. Auto-detects the active driver from `DB_DRIVER`.
+
+### `cli/fetch.js` — DB Query CLI
+
+**Purpose**: Query database records directly from the command line.
+
+| Option | Description |
+|---|---|
+| `--id <id>` | Fetch a single record by ID |
+| `--where <json>` | Filter conditions (e.g. `'{"role":"admin"}'`) |
+| `--limit <n>` | Max records (default: 20) |
+| `--page <n>` | Page number (default: 1) |
+| `--sort <field>` | Sort field (prefix `-` for desc) |
+| `--raw` | Output raw JSON instead of table |
+
+**Output formatting** (table mode):
+- Password/token/secret fields masked as `••••••••`
+- JSON/JSONB objects serialized inline
+- Long strings (>50 chars) truncated with `...`
+- Date fields formatted as `2026-06-18 11:28:35`
+- Columns auto-fitted to terminal width
+
+### `cli/seed.js` — Seeder Runner
+
+Driver-aware seeder CLI. Detects `DB_DRIVER=postgres`, creates a `PostgresStrategy` with a `pg.Pool`, and passes the `strategy` option to `loadSeeders.run()`.
+
+---
+
+## 14. Utils
 
 ### `src/utils/logger.js` — Winston Logger
 
@@ -542,7 +598,7 @@ The `cookie-parser` npm package is used to parse `Cookie` headers into `req.cook
 
 ---
 
-## 14. Validation Schemas
+## 15. Validation Schemas
 
 | File | Fields |
 |---|---|
@@ -555,7 +611,7 @@ The `cookie-parser` npm package is used to parse `Cookie` headers into `req.cook
 
 ---
 
-## 15. Tests
+## 16. Tests
 
 ### Test Suites
 
@@ -565,8 +621,12 @@ The `cookie-parser` npm package is used to parse `Cookie` headers into `req.cook
 | `auth.middleware.test.js` | 10 | Authenticate (5) + authorize (5) |
 | `dynamic-routes.test.js` | 7 | Dynamic `:id` (4) + query params (3) |
 | `strategies.test.js` | 20 | Mongo (7), LocalStorage (3), Postgres (6), S3Storage (4) |
-| Other suites | ~23 | Rate limiter, security repository, env, init, static analysis |
+| `rateLimiter.test.js` | 8 | Rate limiter factory |
+| `security.repository.test.js` | 10 | JWT + bcrypt |
+| `env.test.js` | 3 | Env loading |
+| `init.test.js` | 3 | Bootstrap |
+| Static analysis | 14 | Lint-style checks |
 
-Total: **85+ tests** across multiple suites.
+Total: **100 tests** across 9 suites.
 
 Run: `npm test` (local) or `bash docker-cli/test.sh` (Docker).

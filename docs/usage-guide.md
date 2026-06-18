@@ -673,7 +673,7 @@ After generating, the container auto-discovers the new repository and service fi
 Tests live in `src/tests/` and use Jest.
 
 ```bash
-npm test                          # local (85+ tests)
+npm test                          # local (100 tests)
 bash docker-cli/test.sh           # Docker
 ```
 
@@ -685,8 +685,11 @@ bash docker-cli/test.sh           # Docker
 | `auth.middleware.test.js` | 10 | Authenticate + authorize middleware |
 | `dynamic-routes.test.js` | 7 | Path params, query validation |
 | `strategies.test.js` | 20 | Mongo, Postgres, LocalStorage, S3Storage |
-| `rateLimiter.test.js` | — | Rate limiter factory |
-| `security.repository.test.js` | — | JWT sign/verify, bcrypt |
+| `rateLimiter.test.js` | 8 | Rate limiter factory |
+| `security.repository.test.js` | 10 | JWT sign/verify, bcrypt |
+| `env.test.js` | 3 | Env loading |
+| `init.test.js` | 3 | Bootstrap |
+| Static analysis | 14 | Lint-style checks |
 
 **Because of DI**, services are trivial to test — just inject mocks.
 

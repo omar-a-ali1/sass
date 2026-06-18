@@ -10,7 +10,7 @@
 |---|---|
 | `npm run dev` | Start dev server with `nodemon` (auto-restarts on file changes) |
 | `npm start` | Start production server (`NODE_ENV=production`) |
-| `npm test` | Run all 85 tests across 8 suites |
+| `npm test` | Run all 100 tests across 9 suites |
 
 ---
 
