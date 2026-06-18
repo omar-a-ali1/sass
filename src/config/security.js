@@ -12,7 +12,8 @@ const rateLimit = require('express-rate-limit');
 const env = require('./environment');
 const { SECURITY_DEFAULTS } = require('./system');
 
-/** Rate limiter: 15-minute window, max from env or defaults to 100 requests */
+/** Rate limiter: 15-minute window, max from env or defaults to 100 requests.
+ *  Uses IP as the default key (express-rate-limit default). */
 const limiter = rateLimit({
   windowMs: SECURITY_DEFAULTS.RATE_LIMIT_WINDOW_MS,
   max: env.rateLimit.max || SECURITY_DEFAULTS.RATE_LIMIT_MAX_REQUESTS,

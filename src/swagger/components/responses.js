@@ -8,6 +8,42 @@
  */
 
 module.exports = {
+  SuccessResponse: {
+    description: 'Request completed successfully',
+    content: {
+      'application/json': {
+        schema: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean', example: true },
+            traceId: { type: 'string', example: '6e256651' },
+            data: {
+              type: 'object',
+              description: 'Response payload (varies by endpoint)'
+            }
+          }
+        }
+      }
+    }
+  },
+  CreatedResponse: {
+    description: 'Resource created successfully',
+    content: {
+      'application/json': {
+        schema: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean', example: true },
+            traceId: { type: 'string', example: '6e256651' },
+            data: {
+              type: 'object',
+              description: 'Created resource payload'
+            }
+          }
+        }
+      }
+    }
+  },
   ValidationError: {
       description: 'Bad Request - Input validation failed or input payload is corrupted',
       content: {
@@ -160,6 +196,27 @@ module.exports = {
               type: 'object',
               properties: {
                 message: { type: 'string', example: 'Internal Server Error' }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  ServiceUnavailableError: {
+    description: 'Service Unavailable - The server is temporarily unable to handle the request',
+    content: {
+      'application/json': {
+        schema: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean', example: false },
+            status: { type: 'string', example: 'error' },
+            traceId: { type: 'string', example: 'a1b2c3d4' },
+            error: {
+              type: 'object',
+              properties: {
+                message: { type: 'string', example: 'Service temporarily unavailable' }
               }
             }
           }

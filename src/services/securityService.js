@@ -49,35 +49,17 @@ class SecurityService {
    * @returns {string} Signed access JWT string
    */
   generateAuthToken(user) {
-    const payload = { id: user._id, email: user.email, role: user.role || 'user' };
+    const payload = { id: user.id || user._id, email: user.email, role: user.role || 'user' };
     return this.securityRepository.assignJwt(payload);
   }
 
-  /**
-   * Generate a signed refresh JWT for an authenticated user
-   *
-   * Uses the separate refresh secret and longer expiration.
-   *
-   * @param {Object} user      - Mongoose user document
-   * @param {string} user._id  - User's MongoDB identifier
-   * @param {string} user.email - User's email address
-   * @returns {string} Signed refresh JWT string
-   */
   generateRefreshToken(user) {
-    const payload = { id: user._id, email: user.email, role: user.role || 'user' };
+    const payload = { id: user.id || user._id, email: user.email, role: user.role || 'user' };
     return this.securityRepository.assignRefreshJwt(payload);
   }
 
-  /**
-   * Generate a short-lived reset-password JWT
-   *
-   * @param {Object} user      - User document
-   * @param {string} user._id  - User's identifier
-   * @param {string} user.email - User's email address
-   * @returns {string} Signed reset JWT string
-   */
   generateResetToken(user) {
-    const payload = { id: user._id, email: user.email };
+    const payload = { id: user.id || user._id, email: user.email };
     return this.securityRepository.assignResetJwt(payload);
   }
 

@@ -8,26 +8,33 @@
  */
 
 const mongoose = require('mongoose');
+const config = require('../config/environment');
 
-/**
- * Check system health
- *
- * GET /health
- * Returns environment details, database status (UP/DOWN),
- * server uptime, and heap memory usage.
- *
- * @async
- * @param {Object}   req  - Express request object
- * @param {Object}   res  - Express response object
- * @param {Function} next - Express next middleware function
- * @returns {Promise<void>}
- */
+const _checkPostgres = async () => {
+  try {
+    const { Pool } = require('pg');
+    const pool = new Pool({ connectionString: config.database.pgUri, max: 1, connectionTimeoutMillis: 3000 });
+    const client = await pool.connect();
+    await client.query('SELECT 1');
+    client.release();
+    await pool.end();
+    return 'UP';
+  } catch {
+    return 'DOWN';
+  }
+};
+
 const checkHealth = async (req, res, next) => {
   try {
     const env = process.env.NODE_ENV;
     const uptime = process.uptime();
 
-    const dbStatus = mongoose.connection.readyState === 1 ? 'UP' : 'DOWN';
+    let dbStatus;
+    if (config.database.driver === 'postgres') {
+      dbStatus = await _checkPostgres();
+    } else {
+      dbStatus = mongoose.connection.readyState === 1 ? 'UP' : 'DOWN';
+    }
 
     const memoryUsage = process.memoryUsage();
 

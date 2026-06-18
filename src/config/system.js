@@ -7,6 +7,17 @@ const SECURITY_DEFAULTS = {
 };
 
 /**
+ * Per-endpoint rate limit overrides.
+ * Keyed by route path prefix, takes precedence over the global limit.
+ * Set max to 0 to block the endpoint entirely.
+ */
+const RATE_LIMIT_CONFIG = {
+  '/api/v1/auth/login':    { max: 5,  windowMs: 60 * 1000 },
+  '/api/v1/auth/register': { max: 3,  windowMs: 60 * 1000 },
+  '/api/v1/users':         { max: 60, windowMs: 60 * 1000 },
+};
+
+/**
  * Global middleware pipeline — order matters.
  * Each key maps to a middleware instantiated in bootstrap/index.js.
  */
@@ -22,6 +33,7 @@ const MIDDLEWARE_PIPELINE = [
   'tracer',
   'injectServices',
   'responder',
+  'activityLog',
 ];
 
 /**
@@ -114,6 +126,7 @@ const HTTP_REQUESTS = {
 
 module.exports = {
   SECURITY_DEFAULTS,
+  RATE_LIMIT_CONFIG,
   HTTP_REQUESTS,
   MIDDLEWARE_PIPELINE,
   SWAGGER_CONFIG,

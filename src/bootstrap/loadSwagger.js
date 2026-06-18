@@ -1,22 +1,7 @@
-/**
- * Swagger Docs Auto-Generator
- *
- * Generates OpenAPI path documentation from route definition files
- * using their `docs` exports and auto-detected Joi schemas.
- *
- * @module bootstrap/loadSwagger
- */
-
 const j2s = require('joi-to-swagger');
 const path = require('path');
 const { collectRoutes } = require('./loadRoutes');
 
-/**
- * Build an OpenAPI requestBody from a Joi schema
- *
- * @param {import('joi').ObjectSchema} schema
- * @returns {Object}
- */
 function requestBodyFromSchema(schema) {
   const { swagger } = j2s(schema);
   return {
@@ -27,15 +12,6 @@ function requestBodyFromSchema(schema) {
   };
 }
 
-/**
- * Convert a Joi query schema to OpenAPI query parameters
- *
- * Takes a Joi object schema and transforms each property into
- * `{ name, in: 'query', schema, description, required }`.
- *
- * @param {import('joi').ObjectSchema} schema
- * @returns {Object[]}
- */
 function querySchemaToParameters(schema) {
   const { swagger } = j2s(schema);
   const required = new Set(swagger.required || []);
@@ -49,15 +25,6 @@ function querySchemaToParameters(schema) {
   }));
 }
 
-/**
- * Extract OpenAPI path parameters from an Express-style path
- *
- * Converts `:id` and `:userId` segments into
- * `{ name, in: 'path', required: true, schema: { type: 'string' } }`.
- *
- * @param {string} routePath - e.g. '/v1/users/:id'
- * @returns {Object[]}
- */
 function extractPathParams(routePath) {
   const params = [];
   const regex = /:(\w+)/g;
@@ -73,63 +40,67 @@ function extractPathParams(routePath) {
   return params;
 }
 
-/**
- * Check if a route uses authenticate middleware
- *
- * @param {Object[]} middleware - Array of middleware functions
- * @returns {boolean}
- */
 function requiresAuth(middleware) {
   return middleware.some((mw) => typeof mw === 'function' && mw.name === 'authenticate');
 }
 
-/**
- * Build default response set for a route
- *
- * @param {Object} route
- * @returns {Object}
- */
-function defaultResponses(route) {
-  const successCode = route.method === 'post' ? 201 : 200;
-  const successDesc = route.method.toUpperCase() === 'POST'
-    ? 'Resource created successfully'
-    : 'Request completed successfully';
+const DEFAULT_RESPONSE_CODES = {
+  '200': '#/components/responses/SuccessResponse',
+  '201': '#/components/responses/CreatedResponse',
+  '400': '#/components/responses/ValidationError',
+  '401': '#/components/responses/UnauthorizedError',
+  '403': '#/components/responses/ForbiddenError',
+  '404': '#/components/responses/NotFoundError',
+  '409': '#/components/responses/ConflictError',
+  '500': '#/components/responses/InternalServerError',
+};
 
-  return {
-    [successCode]: { description: successDesc },
-    400: { $ref: '#/components/responses/ValidationError' },
-    500: { $ref: '#/components/responses/InternalServerError' },
-  };
+const METHOD_TO_SUCCESS = {
+  post:   { code: '201', desc: 'Resource created successfully' },
+  get:    { code: '200', desc: 'Request completed successfully' },
+  put:    { code: '200', desc: 'Resource updated successfully' },
+  patch:  { code: '200', desc: 'Resource updated successfully' },
+  delete: { code: '200', desc: 'Resource deleted successfully' },
+};
+
+function pickSuccessDefault(route) {
+  const docs = route.docs || {};
+  const userCodes = docs.responses || {};
+  const user2xx = Object.keys(userCodes).find(c => c.startsWith('2'));
+  if (user2xx) {
+    return { [user2xx]: { description: userCodes[user2xx].description || '' } };
+  }
+  const success = METHOD_TO_SUCCESS[route.method] || METHOD_TO_SUCCESS.get;
+  return { [success.code]: { description: success.desc } };
 }
 
-/**
- * Capitalize the first letter of a string
- *
- * @param {string} s
- * @returns {string}
- */
+function mergeResponses(routeDefaults, userResponses) {
+  if (!userResponses) return routeDefaults;
+  const merged = { ...routeDefaults };
+  for (const [code, response] of Object.entries(userResponses)) {
+    merged[code] = response;
+  }
+  return merged;
+}
+
+function applyStandardErrorRefs(responses, route) {
+  if (!('400' in responses)) responses['400'] = { $ref: DEFAULT_RESPONSE_CODES['400'] };
+  if (!('500' in responses)) responses['500'] = { $ref: DEFAULT_RESPONSE_CODES['500'] };
+  if (requiresAuth(route.middleware)) {
+    if (!('401' in responses)) responses['401'] = { $ref: DEFAULT_RESPONSE_CODES['401'] };
+    if (!('403' in responses)) responses['403'] = { $ref: DEFAULT_RESPONSE_CODES['403'] };
+  }
+  return responses;
+}
+
 function capitalize(s) {
   return s ? s.charAt(0).toUpperCase() + s.slice(1) : 'Default';
 }
 
-/**
- * Derive a Swagger tag from the parent folder name
- *
- * @param {string} folderName
- * @returns {string}
- */
 function deriveTag(folderName) {
   return capitalize(folderName);
 }
 
-/**
- * Generate OpenAPI paths from route definitions
- *
- * @param {Object}  [options]
- * @param {string}  [options.routesDir]
- * @param {Object}  [options.manualPaths]
- * @returns {Object} OpenAPI paths object
- */
 function generatePaths(options = {}) {
   const routesDir = options.routesDir || path.join(__dirname, '..', 'routes');
   const routes = collectRoutes(routesDir);
@@ -158,6 +129,11 @@ function generatePaths(options = {}) {
       ? [{ bearerAuth: [] }, { cookieAuth: [] }]
       : undefined;
 
+    const responses = applyStandardErrorRefs(
+      mergeResponses(pickSuccessDefault(route), docs.responses),
+      route
+    );
+
     paths[openapiPath][route.method] = {
       tags: docs.tags || [tag],
       summary: docs.summary || `${route.method.toUpperCase()} ${route.path}`,
@@ -165,7 +141,7 @@ function generatePaths(options = {}) {
       ...(parameters.length ? { parameters } : {}),
       ...(requestBody ? { requestBody } : {}),
       ...(security ? { security } : {}),
-      responses: docs.responses || defaultResponses(route),
+      responses,
     };
   }
 

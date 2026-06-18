@@ -45,9 +45,6 @@ module.exports = {
           }
         }
       },
-      400: { $ref: '#/components/responses/ValidationError' },
-      401: { $ref: '#/components/responses/UnauthorizedError' },
-      500: { $ref: '#/components/responses/InternalServerError' }
     }
   }
 };

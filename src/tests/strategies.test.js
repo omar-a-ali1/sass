@@ -179,7 +179,7 @@ describe('PostgresStrategy', () => {
 
     expect(result).toEqual({ id: 1, name: 'Test', email: 'test@test.com' });
     expect(mockQuery).toHaveBeenCalledWith(
-      'SELECT * FROM users WHERE email = $1 LIMIT 1',
+      'SELECT * FROM "users" WHERE "email" = $1 LIMIT 1',
       ['test@test.com']
     );
   });
@@ -193,7 +193,7 @@ describe('PostgresStrategy', () => {
 
     expect(result.id).toBe('abc-123');
     expect(mockQuery).toHaveBeenCalledWith(
-      'SELECT * FROM users WHERE id = $1 LIMIT 1',
+      'SELECT * FROM "users" WHERE "id" = $1 LIMIT 1',
       ['abc-123']
     );
   });
@@ -207,7 +207,7 @@ describe('PostgresStrategy', () => {
 
     expect(result.email).toBe('jane@test.com');
     expect(mockQuery).toHaveBeenCalledWith(
-      'INSERT INTO users (name, email) VALUES ($1, $2) RETURNING *',
+      'INSERT INTO "users" ("name", "email") VALUES ($1, $2) RETURNING *',
       ['Jane', 'jane@test.com']
     );
   });
@@ -221,7 +221,7 @@ describe('PostgresStrategy', () => {
 
     expect(result.name).toBe('Updated');
     expect(mockQuery).toHaveBeenCalledWith(
-      'UPDATE users SET name = $1 WHERE id = $2 RETURNING *',
+      'UPDATE "users" SET "name" = $1 WHERE "id" = $2 RETURNING *',
       ['Updated', 'abc-123']
     );
   });
@@ -235,7 +235,7 @@ describe('PostgresStrategy', () => {
 
     expect(result.deletedCount).toBe(1);
     expect(mockQuery).toHaveBeenCalledWith(
-      'DELETE FROM users WHERE id = $1',
+      'DELETE FROM "users" WHERE "id" = $1',
       ['abc-123']
     );
   });
@@ -249,7 +249,7 @@ describe('PostgresStrategy', () => {
 
     expect(result).toBe(3);
     expect(mockQuery).toHaveBeenCalledWith(
-      'SELECT COUNT(*)::int AS count FROM users WHERE active = $1',
+      'SELECT COUNT(*)::int AS count FROM "users" WHERE "active" = $1',
       [true]
     );
   });

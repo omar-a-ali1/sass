@@ -32,7 +32,11 @@ mockModel.limit.mockReturnValue(mockModel);
 mockModel.lean.mockResolvedValue(null);
 mockModel.countDocuments.mockResolvedValue(0);
 
-function MockSchema(def) { this.def = def; }
+function MockSchema(def) {
+  const schema = Object.create(MockSchema.prototype);
+  schema.def = def;
+  return schema;
+}
 MockSchema.prototype.pre = function () { return this; };
 MockSchema.prototype.post = function () { return this; };
 MockSchema.prototype.methods = function () { return this; };

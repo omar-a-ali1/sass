@@ -24,7 +24,11 @@ mockModel.findById.mockReturnValue(mockModel);
 mockModel.findByIdAndUpdate.mockReturnValue(mockModel);
 mockModel.lean.mockResolvedValue(null);
 
-function MockSchema(def) { this.def = def; }
+function MockSchema(def) {
+  const schema = Object.create(MockSchema.prototype);
+  schema.def = def;
+  return schema;
+}
 MockSchema.prototype.pre = function () { return this; };
 MockSchema.prototype.post = function () { return this; };
 MockSchema.prototype.methods = function () { return this; };

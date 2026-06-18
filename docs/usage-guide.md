@@ -420,7 +420,7 @@ module.exports = {
     summary: 'Get user profile',
     responses: {
       200: { description: 'User profile returned', content: { 'application/json': { schema: { type: 'object' } } } },
-      401: { $ref: '#/components/responses/UnauthorizedError' },
+      404: { $ref: '#/components/responses/NotFoundError' },
     }
   }
 };
@@ -431,7 +431,65 @@ module.exports = {
 - Joi query schema on middleware `_queryValidationSchema` → generates `parameters`
 - `authenticate` middleware → adds `security`
 - `:id` in path → adds path `parameters`
-- Missing `responses` field → defaults to `400` + `500` refs
+
+### Auto-added response codes
+
+Every route automatically gets these response codes — you do **not** need to declare them:
+
+| Code | Added when |
+|---|---|
+| `400` ValidationError | **Always** — any endpoint can receive malformed input |
+| `500` InternalServerError | **Always** — any endpoint can crash |
+| `401` UnauthorizedError | Route uses `authenticate` middleware |
+| `403` ForbiddenError | Route uses `authenticate` middleware |
+
+Route files only need to declare:
+- **Custom success body** — the auto-added success code only has a description, no content schema. Provide a full `content` block with your endpoint's data shape.
+- **Extra error codes** — codes outside the auto-added set (`404`, `409`, `503`, etc.)
+
+### Example — minimal route (all errors auto-added)
+
+```js
+// docs.responses only declares the custom success body
+docs: {
+  summary: 'Reset password',
+  responses: {
+    200: {
+      description: 'Password reset successfully',
+      content: { 'application/json': { schema: { ... } } },
+    },
+    // 400 and 500 auto-added — no need to write them
+  },
+}
+```
+
+### Example — route with extra error codes
+
+```js
+// auth/register.js
+docs: {
+  summary: 'Register a new account',
+  responses: {
+    201: { /* custom success body */ },
+    409: { $ref: '#/components/responses/ConflictError' },  // extra — not auto-added
+    // 400 and 500 auto-added
+  },
+}
+```
+
+### Example — auth route (401/403 auto-added)
+
+```js
+// auth/me.js — middleware: [authenticate]
+docs: {
+  summary: 'Get current user profile',
+  responses: {
+    200: { /* custom success body */ },
+    404: { $ref: '#/components/responses/NotFoundError' },  // this endpoint can return 404
+    // 400, 401, 403, 500 auto-added because authenticate is in the middleware chain
+  },
+}
+```
 
 The tag is derived from the immediate parent folder name. For example, a route at `routes/api/v1/auth/login.js` gets tag `Auth` (from the `auth/` folder). Tags can be overridden via `docs.tags` in the route definition.
 

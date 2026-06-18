@@ -115,6 +115,14 @@ class MongoStrategy {
   async count(model, query = {}) {
     return this._model(model).countDocuments(query);
   }
+
+  /**
+   * Verify database connectivity
+   * @returns {Promise<boolean>} true if connected
+   */
+  async verify() {
+    return mongoose.connection.readyState === 1;
+  }
 }
 
 

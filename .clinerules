@@ -1,0 +1,29 @@
+# SASS Framework — Cline / Roo Code Rules
+
+## Architecture
+Always follow: route → controller → service → repository → strategy
+
+## Conventions
+- Routes: `src/routes/` — export `{ method, path, middleware, handler, docs }`. Directory hierarchy maps to URL.
+- Controllers: `req.getService('xxxService')`. `res.respond()/paginated()/fail()`. try/catch → next(err).
+- Services: `constructor({ dep })` DI. Typed errors. No req/res.
+- Repositories: `dbStrategy` methods. No Mongoose directly.
+- Validation: Joi in `src/validation/`. Auto-documented.
+- Sanitize: `sanitizeData(doc, ['f'])` for single, `arr.map(sanitizeData(['f']))` for collections.
+
+## Scaffold First
+```bash
+npm run make:all -- ResourceName
+npm run make:route -- ResourceName
+```
+
+## Must Pass
+```bash
+npm test
+```
+
+## Never
+- Business logic in controllers
+- Direct Mongoose in services
+- `res.status().json()` — use envelope
+- Manual file creation when scaffold exists

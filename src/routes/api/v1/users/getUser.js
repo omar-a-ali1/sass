@@ -18,7 +18,6 @@ module.exports = {
     description: 'Retrieves a single user by their unique ID.',
     responses: {
       200: { description: 'User found' },
-      401: { $ref: '#/components/responses/UnauthorizedError' },
       404: { $ref: '#/components/responses/NotFoundError' },
     },
   },

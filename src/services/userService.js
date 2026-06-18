@@ -23,7 +23,9 @@ class UserService {
       ];
     }
 
-    return this.userRepository.paginate(filters, { page, limit, sort: sortExpr });
+    const result = await this.userRepository.paginate(filters, { page, limit, sort: sortExpr });
+    if (result.data) result.data = result.data.map(sanitizeData);
+    return result;
   }
 }
 

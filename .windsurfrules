@@ -1,0 +1,26 @@
+# SASS Framework — Windsurf / Cascade Rules
+
+## Architecture Chain
+route → controller → service → repository → strategy
+
+## Core Rules
+1. Routes in `src/routes/` — export `{ method, path, middleware, handler, docs }`. Directory path = URL.
+2. Controllers call `req.getService()`, use `res.respond/paginated/fail`, try/catch → next(err).
+3. Services use constructor DI, typed errors, no req/res.
+4. Repositories use `dbStrategy`, never Mongoose.
+5. Validate with Joi schemas from `src/validation/`, auto-documented.
+6. Sanitize output with `sanitizeData()` — strips password/__v.
+
+## Workflow
+```bash
+npm run make:all -- Name    # scaffold layers
+npm run make:route -- Name  # scaffold CRUD routes
+# customize generated files, then:
+npm test                    # all 85+ must pass
+```
+
+## Forbidden
+- Business logic in controllers
+- Direct Mongoose in services
+- `res.status().json()` — use envelope methods
+- Skipping the scaffold

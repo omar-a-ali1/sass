@@ -40,9 +40,7 @@ module.exports = {
           }
         }
       },
-      400: { $ref: '#/components/responses/ValidationError' },
-      409: { $ref: '#/components/responses/ConflictError' },
-      500: { $ref: '#/components/responses/InternalServerError' }
+      409: { $ref: '#/components/responses/ConflictError' }
     }
   }
 };

@@ -18,19 +18,19 @@
 
 ## 2. Test Coverage
 
-All 8 test suites pass (85 tests total):
+All 9 test suites pass (100 tests total):
 
 | Suite | Tests | Status |
 |---|---|---|
-| `auth.int.test.js` | 25 | ✅ Pass (was hanging) |
+| `auth.int.test.js` | 25 | ✅ Pass |
 | `auth.middleware.test.js` | 10 | ✅ Pass |
-| `dynamic-routes.test.js` | 7 | ✅ Pass (was hanging) |
+| `dynamic-routes.test.js` | 7 | ✅ Pass |
 | `strategies.test.js` | 20 | ✅ Pass |
-| `rateLimiter.test.js` | — | ✅ Pass |
-| `security.repository.test.js` | — | ✅ Pass |
-| `env.test.js` | — | ✅ Pass |
-| `init.test.js` | — | ✅ Pass |
-| Static analysis | — | ✅ Pass |
+| `rateLimiter.test.js` | 8 | ✅ Pass |
+| `security.repository.test.js` | 10 | ✅ Pass |
+| `env.test.js` | 3 | ✅ Pass |
+| `init.test.js` | 3 | ✅ Pass |
+| Static analysis | 14 | ✅ Pass |
 
 ---
 
@@ -90,6 +90,22 @@ controller → req.getService('xxxService') → service.list/get/create/update/d
 `user.controller.js` was rebuilt to follow this pattern: `getUser` and `listUsers` now call `userService` instead of directly accessing `authService` or `dbStrategy`. The new `UserService` encapsulates search logic (`$or` / `$regex` transformation), and `UserRepository` gained a `paginate()` method that delegates to `dbStrategy.paginate()`.
 
 Controllers consistently use `res.respond(data)`, `res.paginated(result)`, `res.fail(message)`. The scaffold template (`cli/make.js`) was also updated to generate controllers with `res.respond` / `res.paginated` instead of the old `res.status().json({ success, traceId, data })` pattern.
+
+`userService.list()` now maps `sanitizeData` over paginated results so every user in the collection has `password` and `__v` stripped before reaching the response.
+
+---
+
+## 5. sanitizeData — Dual-Mode Sanitizer
+
+`src/utils/sanitizeData.js` was refactored to support two calling conventions:
+
+| Pattern | Usage | When |
+|---|---|---|
+| Direct | `sanitizeData(doc, ['token'])` | Single doc with extra fields |
+| Mapper | `docs.map(sanitizeData(['token']))` | Collection with extra fields |
+| Passthrough | `docs.map(sanitizeData)` | Collection, defaults only |
+
+The wrapper detects an array-of-strings first argument and returns a `(doc) => sanitizeData(doc, fields)` closure ready for `.map()`. When called via `.map(sanitizeData)`, the index argument from `.map()` is silently ignored.
 
 ---
 
@@ -179,7 +195,114 @@ module.exports = {
 ```
 ---
 
-## 8. Quick Start
+## 8. Swagger Response Abstraction
+
+The `loadSwagger.js` module was rewritten to separate concerns:
+
+| Function | Role |
+|---|---|
+| `pickSuccessDefault(route)` | Returns `{ statusCode: { description } }` — uses the route's own `2xx` code if declared, else infers from HTTP method (POST → 201, GET → 200, etc.) |
+| `mergeResponses(defaults, user)` | Deep overlay: route's `docs.responses` keys replace matching defaults (or add new codes) |
+| `applyStandardErrorRefs(responses, route)` | After merge, fills in any missing standard codes: `400`/`500` always, `401`/`403` when `authenticate` middleware detected |
+
+### Before (route files redundantly specified error refs)
+
+```js
+// auth/login.js — 400/401/500 all explicit
+responses: {
+  201: { ... },
+  400: { $ref: '#/components/responses/ValidationError' },
+  401: { $ref: '#/components/responses/UnauthorizedError' },
+  500: { $ref: '#/components/responses/InternalServerError' },
+}
+```
+
+### After (route only declares what's special)
+
+```js
+// auth/login.js — 401 kept (no authenticate middleware, controller returns 401)
+responses: {
+  201: { ... },
+  401: { $ref: '#/components/responses/UnauthorizedError' },
+}
+// 400 and 500 auto-added by framework
+```
+
+### What each route gets automatically
+
+| Code | When |
+|---|---|
+| `400` | **Every route** — all endpoints can receive malformed input |
+| `500` | **Every route** — all endpoints can crash |
+| `401`, `403` | Routes with `authenticate` middleware — detected via `requiresAuth()` |
+| `200` or `201` | Always — framework picks the appropriate success code and description; route overrides if it needs custom content |
+
+Routes only need to manually declare:
+- Custom success body content (data schema per endpoint)
+- Extra codes not in the standard set (`404`, `409`, `503`)
+
+---
+
+## 9. CLI Tools
+
+### `npm run models`
+
+Lists every Mongoose model with its database table/collection and all column types:
+
+```
+  Models  (driver: postgres)
+
+  User  → users
+  +----+-----------------------------+------+-----------------------------------+
+  | column    | type                  | null | default                           |
+  +===========+=======================+======+===================================+
+  | id        | integer               |      | nextval('users_id_seq'::regclass) |
+  | name      | character varying     |      |                                   |
+  | email     | character varying     |      |                                   |
+  ...
+```
+
+**PostgreSQL mode:** queries `information_schema.columns` for real column names, types, nullability, and defaults.
+**MongoDB mode:** reads Mongoose `schema.paths` for field names, types, required flags, and default values.
+
+### `npm run fetch`
+
+Query database records directly from the command line:
+
+```bash
+npm run fetch -- User
+npm run fetch -- User --limit 5
+npm run fetch -- User --id 1
+npm run fetch -- User --where '{"role":"admin"}'
+npm run fetch -- ActivityLog --sort -createdAt --limit 10 --raw
+```
+
+**Output features:**
+- Passwords and sensitive fields masked (`••••••••`)
+- JSON/JSONB objects serialized inline
+- Long strings (>50 chars) truncated with `...`
+- Dates formatted as `2026-06-18 11:28:35`
+- Table layout auto-fit to terminal
+- `--raw` flag outputs raw JSON for piping (`jq`, file redirect)
+
+Both tools work with PostgreSQL (`pg.Pool`) and MongoDB (`mongoose`) transparently — automatically using the active driver from `DB_DRIVER`.
+
+---
+
+## 10. Docker CLI Updates
+
+New scripts in `docker-cli/`:
+
+| Script | Command | What it does |
+|---|---|---|
+| `models.sh` | `bash docker-cli/models.sh` | Show all models and columns from the running dev container |
+| `fetch.sh` | `bash docker-cli/fetch.sh User --limit 5` | Query records (passes `$@` through to the container) |
+
+All scripts manage dependency health checks (PostgreSQL + MongoDB must be healthy before the command runs).
+
+---
+
+## 11. Quick Start
 ```bash
 cp .env.development.example .env.development
 npm install

@@ -104,4 +104,53 @@ describe('Rate Limiter Middleware', () => {
     const r3 = await makeRequest('GET', '/loose');
     expect(r3.status).toBe(200);
   });
+
+  it('should key by IP by default', async () => {
+    await startServer(createRateLimiter({ windowMs: 1000, max: 2 }));
+
+    const r1 = await makeRequest('GET', '/test');
+    expect(r1.status).toBe(200);
+
+    const r2 = await makeRequest('GET', '/test');
+    expect(r2.status).toBe(200);
+
+    const r3 = await makeRequest('GET', '/test');
+    expect(r3.status).toBe(429);
+  });
+
+  it('should support custom keyGenerator', async () => {
+    let callCount = 0;
+    const customKey = createRateLimiter({
+      windowMs: 1000,
+      max: 1,
+      keyGenerator: () => 'fixed-key',
+    });
+
+    app = express();
+    app.get('/a', customKey, (req, res) => res.json({ ok: true }));
+    app.get('/b', customKey, (req, res) => res.json({ ok: true }));
+
+    await new Promise((resolve) => { server = app.listen(0, () => { port = server.address().port; resolve(); }); });
+
+    const r1 = await makeRequest('GET', '/a');
+    expect(r1.status).toBe(200);
+
+    const r2 = await makeRequest('GET', '/b');
+    expect(r2.status).toBe(429);
+  });
+});
+
+describe('createConfigDrivenRateLimiter', () => {
+  const { createConfigDrivenRateLimiter } = createRateLimiter;
+
+  it('should return null for unknown paths', () => {
+    const mw = createConfigDrivenRateLimiter('/api/v1/unknown');
+    expect(mw).toBeNull();
+  });
+
+  it('should return a middleware for configured paths', () => {
+    const mw = createConfigDrivenRateLimiter('/api/v1/auth/login');
+    expect(mw).toBeDefined();
+    expect(typeof mw).toBe('function');
+  });
 });

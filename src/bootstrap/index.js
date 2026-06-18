@@ -59,6 +59,7 @@ if (config.env !== 'production') {
 
 /** 5. Create Express app with configurable middleware pipeline */
 const app = express();
+app.container = container;
 
 /** Middleware lookup: maps pipeline keys to Express middleware */
 const middlewareMap = {
@@ -73,6 +74,7 @@ const middlewareMap = {
   tracer: require('../middlewares/tracer'),
   injectServices: require('../middlewares/injectServices'),
   responder: require('../middlewares/responder'),
+  activityLog: require('../middlewares/activityLog'),
 };
 
 /** Apply middleware in the order defined by config */

@@ -5,7 +5,7 @@
   "main": "server.js",
   "scripts": {
     "test": "cross-env NODE_ENV=test jest --runInBand --detectOpenHandles",
-    "dev": "cross-env NODE_ENV=development nodemon server.js",
+    "dev": "cross-env NODE_ENV=development node --watch server.js",
     "start": "cross-env NODE_ENV=production node server.js",
     "generate": "node cli/make.js all",
     "make:controller": "node cli/make.js controller",
@@ -16,6 +16,8 @@
     "make:model": "node cli/make.js model",
     "make:all": "node cli/make.js all",
     "routes": "node cli/list-routes.js",
+    "models": "node cli/list-models.js",
+    "fetch": "node cli/fetch.js",
     "seed": "node cli/seed.js",
     "seed:clean": "node cli/seed.js --clean",
     "make:seeder": "node cli/make.js seeder"
@@ -38,6 +40,7 @@
     "mongoose-to-swagger": "^1.5.1",
     "morgan": "^1.11.0",
     "multer": "^2.2.0",
+    "pg": "^8.21.0",
     "serve-favicon": "^2.5.1",
     "socket.io": "^4.8.3",
     "swagger-ui-express": "^5.0.1",

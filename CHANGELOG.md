@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.1.0] — 2026-06-18
+
+### Added
+
+- `npm run models` — CLI to list models, their tables, and column types (PostgreSQL) or schema fields (MongoDB)
+- `npm run fetch` — CLI to query database records by model with `--id`, `--where`, `--limit`, `--sort`, `--raw`
+- `docker-cli/fetch.sh`, `docker-cli/models.sh` — Docker entry points for new CLI tools
+- `ServiceUnavailableError` Swagger response component
+- Automatic `400`/`500` response codes on every route, `401`/`403` on auth routes — routes no longer need to declare them
+- `pickSuccessDefault()` reads route's declared `2xx` code so POST routes returning `200` (e.g. `forgot-password`) get the correct success code in Swagger
+
+### Changed
+
+- **Swagger response abstraction** — `loadSwagger.js` rewritten: `pickApplicableDefaults` → `pickSuccessDefault()` + `applyStandardErrorRefs()`. Error `$ref`s applied after user merge, not before
+- All route files trimmed — redundant `400`/`500`/`401`/`403` refs removed from `docs.responses`
+- `responses.js` now exports `ServiceUnavailableError` (fixes broken `$ref` in health route)
+- `fetch.js` table output: passwords masked, JSON objects serialized, long strings truncated, dates formatted
+
 ## [1.0.0] — 2026-06-17
 
 ### Added

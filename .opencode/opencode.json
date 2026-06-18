@@ -1,0 +1,16 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "default_agent": "sass-senior",
+  "agent": {
+    "sass-senior": {
+      "description": "Senior SASS Framework developer — builds features following the full Controller → Service → Repository → Strategy chain",
+      "mode": "primary",
+      "model": "anthropic/claude-sonnet-4-6",
+      "permission": {
+        "edit": "allow",
+        "bash": { "git *": "allow", "npm *": "allow", "npx *": "ask", "*": "ask" }
+      }
+    }
+  },
+  "instructions": ["VIBE_CODING.md", "CONTRIBUTING.md"]
+}

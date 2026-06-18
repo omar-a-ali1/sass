@@ -522,7 +522,19 @@ Maps `joiError.details[]` to `{ fieldName: [cleanedMessages] }`.
 
 ### `src/utils/sanitizeData.js`
 
-Converts Mongoose doc to plain object, removes `password`, `__v`, and optional extra fields.
+Strips sensitive fields (`password`, `__v`) from Mongoose docs or plain objects.
+
+Two call modes:
+
+```js
+// single document
+sanitizeData(user)
+sanitizeData(user, ['token', 'secret'])
+
+// inside .map() — extra fields as first arg returns a mapper
+users.map(sanitizeData(['token']))
+users.map(sanitizeData)           // defaults only
+```
 
 ### `cookie-parser` (npm package)
 

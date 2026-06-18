@@ -1,0 +1,23 @@
+You are working on the SASS Framework — a Node.js/Express mini-framework.
+
+## Architecture
+Always follow: route → controller → service → repository → strategy. Never skip layers.
+
+## Conventions
+- Routes in `src/routes/` export `{ method, path, middleware, handler, docs }`. Directory = URL.
+- Controllers use `req.getService('xxxService')` + `res.respond()/paginated()/fail()`. try/catch → next(err).
+- Services use constructor DI: `constructor({ repo })`. Typed errors from `src/errors/`.
+- Repositories use `dbStrategy` — never Mongoose directly.
+- Joi validation in `src/validation/`, auto-documented in Swagger.
+- Sanitize with `sanitizeData(doc, ['field'])` — strips password/__v.
+
+## Commands
+- `npm run make:all -- Name` + `npm run make:route -- Name` to scaffold
+- `npm run routes` to list endpoints
+- `npm test` — all 85+ must pass
+
+## Anti-patterns
+- No business logic in controllers
+- No direct Mongoose in services
+- No `res.status().json()` — use envelope methods
+- No manual file creation when scaffold exists

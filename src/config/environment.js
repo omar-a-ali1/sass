@@ -40,10 +40,12 @@ module.exports = {
   bodyLimit: process.env.BODY_LIMIT || '1mb',
 
   database: {
-    /** Database driver (currently only 'mongo' is implemented) */
+    /** Database driver (mongo or postgres) */
     driver: process.env.DB_DRIVER || 'mongo',
     /** Database connection URI */
     uri: process.env.MONGO_URI || 'mongodb://localhost:27017/myapp_dev',
+    /** PostgreSQL connection URI (used when driver is 'postgres') */
+    pgUri: process.env.POSTGRES_URI || '',
   },
   bcrypt: {
     /** Number of bcrypt salt rounds for password hashing */

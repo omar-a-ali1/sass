@@ -1,26 +1,23 @@
-/**
- * Database Connection Module
- *
- * Establishes a Mongoose connection to MongoDB using the URI from
- * the environment configuration. Exits the process on failure.
- *
- * @module config/database
- */
-
 const mongoose = require('mongoose');
 const env = require('./environment');
 const logger = require('../utils/logger');
 
-/**
- * Connect to MongoDB
- *
- * Attempts to connect using `mongoose.connect()`. Logs success or
- * terminates the process with exit code 1 on failure.
- *
- * @async
- * @returns {Promise<void>}
- */
-const connectDB = async () => {
+const connectDB = async (container) => {
+  const driver = env.database.driver;
+
+  if (driver === 'postgres') {
+    logger.info('PostgreSQL driver selected — verifying connection...');
+    if (container) {
+      const dbStrategy = container.get('dbStrategy');
+      const ok = await dbStrategy.verify();
+      if (!ok) {
+        throw new Error('PostgreSQL connection verification failed');
+      }
+      logger.info('PostgreSQL connection verified successfully.');
+    }
+    return;
+  }
+
   try {
     await mongoose.connect(env.database.uri);
     logger.info('Database connection established successfully.');

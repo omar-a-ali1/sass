@@ -24,6 +24,44 @@ services:
       - mongo_test_data:/data/db
     networks:
       - sass_network
+
+  postgres_dev:
+    image: postgres:16-alpine
+    container_name: sass-postgres-dev
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: sass
+      POSTGRES_PASSWORD: sass
+      POSTGRES_DB: sass_dev
+    volumes:
+      - pg_dev_data:/var/lib/postgresql/data
+    networks:
+      - sass_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sass -d sass_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  postgres_test:
+    image: postgres:16-alpine
+    container_name: sass-postgres-test
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: sass
+      POSTGRES_PASSWORD: sass
+      POSTGRES_DB: sass_test
+    networks:
+      - sass_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sass -d sass_test"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+
   app_dev:
     build:
       context: .
@@ -34,14 +72,17 @@ services:
     ports:
       - "5000:5000"
     volumes:
-      - .:/usr/src/app:z  
+      - .:/usr/src/app:z
       - /usr/src/app/node_modules
-    command: ["npm", "run", "dev"] 
+    command: ["npm", "run", "dev"]
     depends_on:
       mongodb_dev:
         condition: service_healthy
+      postgres_dev:
+        condition: service_healthy
     networks:
       - sass_network
+
   app_test:
     build:
       context: .
@@ -54,6 +95,7 @@ services:
       - /usr/src/app/node_modules
     depends_on:
       - mongodb_test
+      - postgres_test
     networks:
       - sass_network
     command: ["npm", "run", "test"]
@@ -65,3 +107,4 @@ networks:
 volumes:
   mongo_dev_data:
   mongo_test_data:
+  pg_dev_data:

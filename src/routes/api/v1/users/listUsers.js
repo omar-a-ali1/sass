@@ -25,8 +25,6 @@ module.exports = {
     description: 'Returns a paginated list of users. Supports page, limit, sort, and search query params.',
     responses: {
       200: { description: 'Paginated list of users' },
-      401: { $ref: '#/components/responses/UnauthorizedError' },
-      500: { $ref: '#/components/responses/InternalServerError' },
     },
   },
 };

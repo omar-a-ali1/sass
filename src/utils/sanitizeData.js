@@ -3,39 +3,40 @@
  *
  * Strips sensitive fields (password, __v) and internal metadata
  * from Mongoose documents or plain objects before returning them
- * in API responses. Additional fields can be removed dynamically.
+ * in API responses. Accepts extra field names for fine-grained control.
+ *
+ * Two call modes:
+ *
+ *   // single document
+ *   sanitizeData(user)
+ *   sanitizeData(user, ['token', 'secret'])
+ *
+ *   // inside .map() with extra fields
+ *   users.map(sanitizeData(['token']))     // returns a mapper function
  *
  * @module helpers/sanitizeData
  */
 
-/**
- * Sanitize a document by removing sensitive and internal fields
- *
- * Converts Mongoose documents to plain objects via `toObject()`,
- * then deletes default sensitive fields (`__v`, `password`) plus
- * any additional field names provided.
- *
- * @param {Object}   doc          - Raw Mongoose document or plain object
- * @param {...string} fields       - Optional additional field names to remove
- * @returns {Object|null} Cleaned plain object, or null if input is falsy
- */
-const sanitizeData = (doc, ...fields) => {
+const sanitizeData = (doc, extra = []) => {
   if (!doc) return null;
 
   const cleanedObj = typeof doc.toObject === 'function' ? doc.toObject() : { ...doc };
 
   delete cleanedObj.__v;
-  if ('password' in cleanedObj) {
-    delete cleanedObj.password;
-  }
+  delete cleanedObj.password;
 
-  if (fields.length > 0) {
-    fields.forEach(field => {
-      delete cleanedObj[field];
-    });
+  for (const field of extra) {
+    delete cleanedObj[field];
   }
 
   return cleanedObj;
 };
 
-module.exports = sanitizeData;
+const sanitize = (input, extra = []) => {
+  if (Array.isArray(input) && input.every((i) => typeof i === 'string')) {
+    return (doc) => sanitizeData(doc, input);
+  }
+  return sanitizeData(input, Array.isArray(extra) ? extra : []);
+};
+
+module.exports = sanitize;

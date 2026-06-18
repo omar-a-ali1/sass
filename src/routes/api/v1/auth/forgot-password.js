@@ -45,8 +45,6 @@ module.exports = {
           }
         }
       },
-      400: { $ref: '#/components/responses/ValidationError' },
-      500: { $ref: '#/components/responses/InternalServerError' }
     }
   }
 };
