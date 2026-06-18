@@ -127,6 +127,27 @@ class PostgresStrategy {
       return false;
     }
   }
+
+  async truncate(model) {
+    const pool = await this._getPool();
+    await pool.query(`DELETE FROM ${this._table(model)}`);
+  }
+
+  async insertMany(model, docs) {
+    if (!docs.length) return [];
+    const pool = await this._getPool();
+    const keys = Object.keys(docs[0]);
+    const cols = keys.map(k => this._quote(k)).join(', ');
+    const values = [];
+    const placeholders = docs.map((doc, i) => {
+      const offset = i * keys.length;
+      keys.forEach((k, j) => { values.push(doc[k]); });
+      return '(' + keys.map((_, j) => `$${offset + j + 1}`).join(', ') + ')';
+    }).join(', ');
+    const text = `INSERT INTO ${this._table(model)} (${cols}) VALUES ${placeholders} RETURNING *`;
+    const { rows } = await pool.query(text, values);
+    return rows;
+  }
 }
 
 module.exports = PostgresStrategy;

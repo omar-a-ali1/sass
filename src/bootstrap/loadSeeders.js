@@ -4,7 +4,7 @@
  * Scans `src/seeders/` for `*.seeder.js` definition files and runs them.
  * Each seeder file exports { model, count, generate(i) }.
  *
- * Used by the CLI (`npm run seed`) and auto-run in dev mode via server.js.
+ * Supports both MongoDB (via Mongoose) and PostgreSQL (via dbStrategy).
  *
  * @module bootstrap/loadSeeders
  */
@@ -40,12 +40,9 @@ function discoverSeeders(only) {
 }
 
 /**
- * Execute seeders — optionally clearing collections first.
- *
- * @param {Array<{ name: string, def: object }>} entries - Discovered seeder entries
- * @param {boolean} [clean=false] - Drop existing documents before seeding
+ * Execute seeders using Mongoose (MongoDB).
  */
-async function runSeeders(entries, clean = false) {
+async function runSeedersMongoose(entries, clean = false) {
   for (const { name, def } of entries) {
     const Model = mongoose.model(def.model);
     if (!Model) {
@@ -67,11 +64,30 @@ async function runSeeders(entries, clean = false) {
 }
 
 /**
+ * Execute seeders using dbStrategy (PostgreSQL).
+ */
+async function runSeedersPg(entries, clean = false, strategy) {
+  for (const { name, def } of entries) {
+    if (clean) {
+      await strategy.truncate(def.model);
+      console.log(`  \u{1F5D1} Cleared "${def.model}" table`);
+    }
+
+    const count = def.count || 10;
+    const docs = Array.from({ length: count }, (_, i) => def.generate(i));
+    await strategy.insertMany(def.model, docs);
+
+    console.log(`  \u{2714} Seeded ${count} "${def.model}" records (seeder: ${name})`);
+  }
+}
+
+/**
  * High-level run: discover + execute seeders.
  *
  * @param {Object}   [options]
  * @param {boolean}  [options.clean=false]
  * @param {string}   [options.only] - Seeder name filter
+ * @param {Object}   [options.strategy] - dbStrategy (required for PostgreSQL)
  */
 async function run(options = {}) {
   const entries = discoverSeeders(options.only);
@@ -81,7 +97,13 @@ async function run(options = {}) {
   }
 
   console.log(`\n  Seeding ${entries.length} entr${entries.length > 1 ? 'ies' : 'y'}...\n`);
-  await runSeeders(entries, options.clean);
+
+  if (options.strategy) {
+    await runSeedersPg(entries, options.clean, options.strategy);
+  } else {
+    await runSeedersMongoose(entries, options.clean);
+  }
+
   console.log('\n  Done.\n');
 }
 

@@ -123,6 +123,14 @@ class MongoStrategy {
   async verify() {
     return mongoose.connection.readyState === 1;
   }
+
+  async truncate(model) {
+    await this._model(model).deleteMany({});
+  }
+
+  async insertMany(model, docs) {
+    return this._model(model).insertMany(docs);
+  }
 }
 
 

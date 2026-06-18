@@ -13,6 +13,7 @@ require('dotenv').config({
   override: true,
 });
 
+const config = require('../src/config/environment');
 const connectDB = require('../src/config/database');
 const logger = require('../src/utils/logger');
 require('../src/bootstrap/loadModels');
@@ -48,19 +49,38 @@ function parseArgs() {
 (async () => {
   const opts = parseArgs();
   console.log(`\n  Environment: ${process.env.NODE_ENV}`);
+  console.log(`  Driver:      ${config.database.driver}`);
   console.log(`  Clean:       ${opts.clean ? 'yes' : 'no'}`);
   if (opts.only) console.log(`  Only:        ${opts.only}`);
 
-  try {
-    await connectDB();
-  } catch (err) {
-    logger.error(`✖ Database connection failed: ${err.message}`)
-    console.error(`\n  ✖ Database connection failed: ${err.message}`);
-    console.error('  Check that MongoDB is running and MONGO_URI is correct.\n');
-    process.exit(1);
+  if (config.database.driver === 'postgres') {
+    const { Pool } = require('pg');
+    const pool = new Pool({ connectionString: config.database.pgUri });
+    try { await pool.query('SELECT 1'); }
+    catch (err) {
+      console.error(`\n  ✖ PostgreSQL connection failed: ${err.message}\n`);
+      process.exit(1);
+    }
+
+    const PostgresStrategy = require('../src/strategies/database/postgres.strategy');
+    const strategy = new PostgresStrategy();
+    strategy._pool = pool;
+
+    await seeder.run({ ...opts, strategy });
+    await pool.end();
+  } else {
+    try {
+      await connectDB();
+    } catch (err) {
+      logger.error(`✖ Database connection failed: ${err.message}`)
+      console.error(`\n  ✖ Database connection failed: ${err.message}`);
+      console.error('  Check that MongoDB is running and MONGO_URI is correct.\n');
+      process.exit(1);
+    }
+
+    await seeder.run(opts);
   }
 
-  await seeder.run(opts);
   process.exit(0);
 })().catch(err => {
   console.error(`\n  ✖ Seed failed: ${err.message}\n`);

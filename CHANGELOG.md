@@ -10,6 +10,11 @@
 - `ServiceUnavailableError` Swagger response component
 - Automatic `400`/`500` response codes on every route, `401`/`403` on auth routes — routes no longer need to declare them
 - `pickSuccessDefault()` reads route's declared `2xx` code so POST routes returning `200` (e.g. `forgot-password`) get the correct success code in Swagger
+- `truncate()` and `insertMany()` on both `MongoStrategy` and `PostgresStrategy`
+
+### Fixed
+
+- **PostgreSQL seeding** — `loadSeeders.js` and `cli/seed.js` now driver-aware: use `PostgresStrategy.truncate()` + `insertMany()` when DB driver is postgres, instead of Mongoose (which timed out)
 
 ### Changed
 
