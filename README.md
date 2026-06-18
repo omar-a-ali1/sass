@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/SASS.svg" alt="SASS Framework Logo" width="120"/>
+  <img src="./src/lib/assets/SASS.svg" alt="SASS Framework Logo" width="120"/>
 </p>
 
 <h1 align="center">SASS Framework</h1>
