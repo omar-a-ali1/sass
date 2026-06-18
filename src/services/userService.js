@@ -1,5 +1,5 @@
-const NotFoundError = require('../errors/NotFoundError');
-const sanitizeData = require('../utils/sanitizeData');
+const NotFoundError = require('../lib/errors/NotFoundError');
+const sanitizeData = require('../lib/utils/sanitizeData');
 
 class UserService {
   constructor({ userRepository }) {

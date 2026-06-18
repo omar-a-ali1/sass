@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 const env = require('./environment');
-const logger = require('../utils/logger');
+const logger = require('../lib/utils/logger');
 
 const connectDB = async (container) => {
   const driver = env.database.driver;

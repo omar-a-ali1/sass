@@ -4,8 +4,8 @@
 # Connects to the running dev container and runs the schema sync tool.
 #
 # Usage:
-#   bash docker-cli/sync.sh              # Sync all models
-#   bash docker-cli/sync.sh User Store    # Sync specific models
+#   bash src/tools/docker-cli/sync.sh              # Sync all models
+#   bash src/tools/docker-cli/sync.sh User Store    # Sync specific models
 #
 set -euo pipefail
 
@@ -26,4 +26,4 @@ for i in $(seq 1 30); do
 done
 
 echo "🔧 Running schema sync..."
-docker compose exec -T app_dev node cli/sync-db.js "$@"
+docker compose exec -T app_dev node src/tools/cli/sync-db.js "$@"

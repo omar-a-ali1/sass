@@ -13,11 +13,11 @@ require('dotenv').config({
   override: true,
 });
 
-const config = require('../src/config/environment');
-const connectDB = require('../src/config/database');
-const logger = require('../src/utils/logger');
-require('../src/bootstrap/loadModels');
-const seeder = require('../src/bootstrap/loadSeeders');
+const config = require('../../config/environment');
+const connectDB = require('../../config/database');
+const logger = require('../../lib/utils/logger');
+require('../../bootstrap/loadModels');
+const seeder = require('../../bootstrap/loadSeeders');
 
 function parseArgs() {
   const args = process.argv.slice(2);
@@ -62,7 +62,7 @@ function parseArgs() {
       process.exit(1);
     }
 
-    const PostgresStrategy = require('../src/strategies/database/postgres.strategy');
+    const PostgresStrategy = require('../../lib/strategies/database/postgres.strategy');
     const strategy = new PostgresStrategy();
     strategy._pool = pool;
 

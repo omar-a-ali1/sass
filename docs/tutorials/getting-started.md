@@ -42,7 +42,7 @@ POSTGRES_URI=postgres://localhost:5432/sass_dev  # if using PG locally
 
 ```bash
 # Option A — with Docker (recommended)
-bash docker-cli/dev.sh
+bash src/tools/docker-cli/dev.sh
 
 # Option B — directly on host
 npm run dev
@@ -97,30 +97,35 @@ sass/
 │   ├── services/
 │   ├── repositories/
 │   ├── middlewares/
-│   ├── strategies/                  # Pluggable backends
-│   │   ├── database/                #   MongoStrategy, PostgresStrategy
-│   │   ├── storage/                 #   LocalStorageStrategy, S3StorageStrategy
-│   │   └── email/                   #   ConsoleEmailStrategy, SmtpEmailStrategy
+│   ├── lib/                         # Shared libraries
+│   │   ├── errors/                  #   AppError classes
+│   │   ├── utils/                   #   logger, sanitizeData, etc.
+│   │   ├── strategies/              #   Pluggable backends
+│   │   │   ├── database/            #     MongoStrategy, PostgresStrategy
+│   │   │   ├── storage/             #     LocalStorageStrategy, S3StorageStrategy
+│   │   │   └── email/               #     ConsoleEmailStrategy, SmtpEmailStrategy
+│   │   └── assets/                  #   Static assets (favicon)
+│   ├── tools/                       # CLI & Docker tools
+│   │   ├── cli/                     #   Scaffolding, route lister, DB tools
+│   │   │   ├── make.js
+│   │   │   ├── list-routes.js
+│   │   │   ├── list-models.js
+│   │   │   ├── fetch.js
+│   │   │   ├── seed.js
+│   │   │   └── sync-db.js
+│   │   └── docker-cli/              #   Docker workflow scripts
+│   │       ├── dev.sh
+│   │       ├── dev-postgres.sh
+│   │       ├── test.sh
+│   │       ├── seed.sh
+│   │       ├── models.sh
+│   │       ├── fetch.sh
+│   │       └── sync.sh
 │   ├── validation/                  # Joi schemas
-│   ├── errors/                      # AppError classes
-│   ├── utils/                       # logger, sanitizeData, etc.
 │   ├── seeders/                     # Auto-discovered seed files
 │   └── tests/                       # Jest test suites
-├── cli/                             # CLI tools
-│   ├── make.js                      # Scaffolding generator
-│   ├── list-routes.js               # Route lister
-│   ├── list-models.js               # Model inspector
-│   ├── fetch.js                     # DB query tool
-│   ├── seed.js                      # Seeder runner
-│   └── sync-db.js                   # PostgreSQL schema sync
-├── docker-cli/                      # Docker workflow scripts
-│   ├── dev.sh
-│   ├── test.sh
-│   ├── seed.sh
-│   ├── models.sh
-│   ├── fetch.sh
-│   └── sync.sh
-└── docker-compose.yaml
+├── docker-compose.yaml
+└── Dockerfile
 ```
 
 ---
@@ -225,13 +230,18 @@ sass/
 | `npm run sync` | Sync Mongoose models → PostgreSQL schema |
 
 ### Docker
-- `bash docker-cli/dev.sh` — full dev environment (app + MongoDB + PostgreSQL)
-- `bash docker-cli/test.sh` — run tests in Docker
-- `bash docker-cli/seed.sh` — seed database in Docker
-- `bash docker-cli/models.sh` — inspect models in Docker
-- `bash docker-cli/fetch.sh User --limit 5` — query records in Docker
-- `bash docker-cli/sync.sh` — sync PG schema in Docker
-- All scripts handle health checks automatically
+
+| npm script | bash equivalent | Description |
+|---|---|---|
+| `npm run docker:dev` | `bash src/tools/docker-cli/dev.sh` | Full dev environment (app + MongoDB + PostgreSQL) |
+| `npm run docker:dev-postgres` | `bash src/tools/docker-cli/dev-postgres.sh` | Dev with PostgreSQL only |
+| `npm run docker:test` | `bash src/tools/docker-cli/test.sh` | Run tests in Docker |
+| `npm run docker:seed` | `bash src/tools/docker-cli/seed.sh` | Seed database in Docker |
+| `npm run docker:models` | `bash src/tools/docker-cli/models.sh` | Inspect models in Docker |
+| `npm run docker:fetch -- User --limit 5` | `bash src/tools/docker-cli/fetch.sh User --limit 5` | Query records in Docker |
+| `npm run docker:sync` | `bash src/tools/docker-cli/sync.sh` | Sync PG schema in Docker |
+
+All scripts handle health checks automatically.
 
 ---
 
@@ -532,7 +542,7 @@ module.exports = {
 
 - Use **MongoDB** for prototyping (`DB_DRIVER=mongo`) — no schema migration needed
 - Switch to **PostgreSQL** for production (`DB_DRIVER=postgres`) — same code, different driver
-- Use **Docker** to avoid local installs — `bash docker-cli/dev.sh`
+- Use **Docker** to avoid local installs — `bash src/tools/docker-cli/dev.sh`
 - Enable **SMTP email** by setting `EMAIL_DRIVER=smtp` with SMTP credentials
 - Add **API key auth** by importing `apiKeyAuth` middleware to any route
 - Use the **swagger abstraction** — only custom success bodies need documentation

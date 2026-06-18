@@ -274,7 +274,7 @@ Error
       └── ValidationError     (400)
 ```
 
-### `src/errors/appErrors.js` — Base Error
+### `src/lib/errors/appErrors.js` — Base Error
 
 | Class | Constructor | Description |
 |---|---|---|
@@ -583,7 +583,7 @@ All strategy interfaces use `async` methods and receive config via constructor.
 
 ## 12. Swagger / OpenAPI
 
-### `src/swagger/components/index.js`
+### `src/lib/swagger/components/index.js`
 
 | Section | Contents |
 |---|---|
@@ -638,15 +638,15 @@ Driver-aware seeder CLI. Detects `DB_DRIVER=postgres`, creates a `PostgresStrate
 
 ## 14. Utils
 
-### `src/utils/logger.js` — Winston Logger
+### `src/lib/utils/logger.js` — Winston Logger
 
 Levels: `error(0)` `warn(1)` `info(2)` `http(3)` `debug(4)`. Console (all, colorized) + File transports (`error.log`, `warning.log`, `app.log`).
 
-### `src/utils/formatJoiErrors.js`
+### `src/lib/utils/formatJoiErrors.js`
 
 Maps `joiError.details[]` to `{ fieldName: [cleanedMessages] }`.
 
-### `src/utils/sanitizeData.js`
+### `src/lib/utils/sanitizeData.js`
 
 Strips sensitive fields (`password`, `__v`) from Mongoose docs or plain objects.
 
@@ -702,4 +702,4 @@ The `cookie-parser` npm package is used to parse `Cookie` headers into `req.cook
 
 Total: **117 tests** across 12 suites.
 
-Run: `npm test` (local) or `bash docker-cli/test.sh` (Docker).
+Run: `npm test` (local) or `bash src/tools/docker-cli/test.sh` (Docker).

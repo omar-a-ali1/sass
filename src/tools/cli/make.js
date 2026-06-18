@@ -162,7 +162,7 @@ module.exports = ${Pascal}Repository;
 }
 
 function makeService() {
-  write(path.join(ROOT, 'src', 'services', `${camel}Service.js`), `const NotFoundError = require('../errors/NotFoundError');
+  write(path.join(ROOT, 'src', 'services', `${camel}Service.js`), `const NotFoundError = require('../lib/errors/NotFoundError');
 
 class ${Pascal}Service {
   constructor({ ${camel}Repository }) {

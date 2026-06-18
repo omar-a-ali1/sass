@@ -12,7 +12,7 @@
 const fs = require('fs');
 const path = require('path');
 const mongoose = require('mongoose');
-const logger = require('../utils/logger');
+const logger = require('../lib/utils/logger');
 
 const seedersDir = path.join(__dirname, '..', 'seeders');
 const seederPattern = /\.seeder\.js$/;

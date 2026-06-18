@@ -61,13 +61,13 @@ container.register('config', config);
 
 // ── 1. Strategies (manual — depend on config) ──
 
-const MongoStrategy = require('../strategies/database/mongo.strategy');
-const PostgresStrategy = require('../strategies/database/postgres.strategy');
-const LocalStorageStrategy = require('../strategies/storage/localStorage.strategy');
-const S3StorageStrategy = require('../strategies/storage/s3Storage.strategy');
-const ConsoleEmailStrategy = require('../strategies/email/consoleEmail.strategy');
-const SmtpEmailStrategy = require('../strategies/email/smtpEmail.strategy');
-const StubEmailStrategy = require('../strategies/email/stubEmail.strategy');
+const MongoStrategy = require('../lib/strategies/database/mongo.strategy');
+const PostgresStrategy = require('../lib/strategies/database/postgres.strategy');
+const LocalStorageStrategy = require('../lib/strategies/storage/localStorage.strategy');
+const S3StorageStrategy = require('../lib/strategies/storage/s3Storage.strategy');
+const ConsoleEmailStrategy = require('../lib/strategies/email/consoleEmail.strategy');
+const SmtpEmailStrategy = require('../lib/strategies/email/smtpEmail.strategy');
+const StubEmailStrategy = require('../lib/strategies/email/stubEmail.strategy');
 
 const dbDrivers = {
   mongo: () => new MongoStrategy(),

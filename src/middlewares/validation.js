@@ -8,8 +8,8 @@
  * @module middlewares/validation
  */
 
-const ValidationError = require('../errors/ValidationError');
-const formatJoiErrors = require('../utils/formatJoiErrors');
+const ValidationError = require('../lib/errors/ValidationError');
+const formatJoiErrors = require('../lib/utils/formatJoiErrors');
 const { HTTP_REQUESTS } = require('../config/system');
 
 /**

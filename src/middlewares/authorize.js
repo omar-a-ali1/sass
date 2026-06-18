@@ -12,7 +12,7 @@
  * @module middlewares/authorize
  */
 
-const ForbiddenError = require('../errors/ForbiddenError');
+const ForbiddenError = require('../lib/errors/ForbiddenError');
 
 /**
  * Require one or more roles to access the route

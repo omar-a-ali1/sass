@@ -59,15 +59,21 @@ Refactor to the full chain before merging.
 
 ### Adding a new strategy backend
 
-1. Implement the interface in `src/strategies/<domain>/`
+1. Implement the interface in `src/lib/strategies/<domain>/`
 2. Register it in `src/bootstrap/loadContainer.js` with a config-driven driver map
 
 ### Per-route rate limiting
 
+Add a `rateLimit` property to your route definition — the framework auto-creates and prepends the middleware:
+
 ```js
-const createRateLimiter = require('../../middlewares/rateLimiter');
-const limiter = createRateLimiter({ windowMs: 60000, max: 5 });
-// add limiter to the route's middleware array
+module.exports = {
+  method: 'post',
+  path: '/login',
+  rateLimit: { windowMs: 60000, max: 5 },
+  middleware: [validate(loginSchema)],
+  handler: login,
+};
 ```
 
 ## What Not To Do

@@ -1,4 +1,4 @@
-const NotFoundError = require('../errors/NotFoundError');
+const NotFoundError = require('../lib/errors/NotFoundError');
 
 const fallback = (req, res, next) => {
   next(new NotFoundError(`route not found [${req.originalUrl}]`));

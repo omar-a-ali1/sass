@@ -22,7 +22,7 @@ const helmet = require('helmet');
 const config = require('../config/environment');
 const { SWAGGER_CONFIG, MIDDLEWARE_PIPELINE } = require('../config/system');
 const { helmetConfig, corsOptions, rateLimiter } = require('../config/security');
-const logger = require('../utils/logger');
+const logger = require('../lib/utils/logger');
 
 /** 1. Auto-load Mongoose models */
 require('./loadModels');
@@ -50,7 +50,7 @@ if (config.env !== 'production') {
       description: 'Local Development Server'
     }],
     paths: generatePaths(),
-    components: require('../swagger/components'),
+    components: require('../lib/swagger/components'),
   };
 
   serveSwaggerUi = swaggerUi.serve;
@@ -63,7 +63,7 @@ app.container = container;
 
 /** Middleware lookup: maps pipeline keys to Express middleware */
 const middlewareMap = {
-  favicon: favicon(path.join(__dirname, '..', '..', 'assets', 'favicon.ico')),
+  favicon: favicon(path.join(__dirname, '..', 'lib', 'assets', 'favicon.ico')),
   helmet: helmetConfig,
   cors: cors(corsOptions),
   cookieParser: require('cookie-parser')(),

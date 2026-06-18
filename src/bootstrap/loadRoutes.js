@@ -94,4 +94,7 @@ function buildRouter(dir = routesDir) {
 
 const Router = buildRouter();
 
-module.exports = { collectRoutes, buildRouter, Router, routePrefix: '' };
+/** Pre-computed route listing for the dev endpoint — avoids lazy rate limiter creation */
+const cachedRoutes = collectRoutes();
+
+module.exports = { collectRoutes, buildRouter, Router, routePrefix: '', cachedRoutes };

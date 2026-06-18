@@ -73,46 +73,46 @@ Network: `sass_network` (bridge driver)
 
 ## Docker CLI — Predefined Scripts
 
-Convenience scripts in [`docker-cli/`](../docker-cli) wrap common Docker Compose workflows:
+Convenience scripts in [`src/tools/docker-cli/`](../src/tools/docker-cli) wrap common Docker Compose workflows:
 
 | Script | Command | Description |
 |---|---|---|
-| `dev.sh` | `bash docker-cli/dev.sh` | Start dev app + MongoDB + PostgreSQL (live-reload) |
-| `dev-postgres.sh` | `bash docker-cli/dev-postgres.sh` | Start dev app + PostgreSQL only |
-| `test.sh` | `bash docker-cli/test.sh` | Start test DBs + run all tests |
-| `seed.sh` | `bash docker-cli/seed.sh [--clean] [--only name]` | Seed database (forwards `$@` to container) |
-| `models.sh` | `bash docker-cli/models.sh` | Show models and columns from dev container |
-| `fetch.sh` | `bash docker-cli/fetch.sh User --limit 5` | Query records from dev container (forwards `$@`) |
+| `dev.sh` | `bash src/tools/docker-cli/dev.sh` | Start dev app + MongoDB + PostgreSQL (live-reload) |
+| `dev-postgres.sh` | `bash src/tools/docker-cli/dev-postgres.sh` | Start dev app + PostgreSQL only |
+| `test.sh` | `bash src/tools/docker-cli/test.sh` | Start test DBs + run all tests |
+| `seed.sh` | `bash src/tools/docker-cli/seed.sh [--clean] [--only name]` | Seed database (forwards `$@` to container) |
+| `models.sh` | `bash src/tools/docker-cli/models.sh` | Show models and columns from dev container |
+| `fetch.sh` | `bash src/tools/docker-cli/fetch.sh User --limit 5` | Query records from dev container (forwards `$@`) |
 
 All scripts rely on Docker Compose health checks — the app won't start until MongoDB is healthy.
 
-### `docker-cli/dev.sh`
+### `src/tools/docker-cli/dev.sh`
 ```bash
 docker compose up app_dev mongodb_dev postgres_dev
 ```
 
-### `docker-cli/dev-postgres.sh`
+### `src/tools/docker-cli/dev-postgres.sh`
 ```bash
 docker compose up app_dev postgres_dev
 ```
 
-### `docker-cli/test.sh`
+### `src/tools/docker-cli/test.sh`
 ```bash
 docker compose up mongodb_test app_test
 ```
 
-### `docker-cli/seed.sh`
+### `src/tools/docker-cli/seed.sh`
 ```bash
 # Passes all arguments through to the seed CLI
 docker exec -it sass-app-dev npm run seed -- "$@"
 ```
 
-### `docker-cli/models.sh`
+### `src/tools/docker-cli/models.sh`
 ```bash
 docker exec -it sass-app-dev npm run models
 ```
 
-### `docker-cli/fetch.sh`
+### `src/tools/docker-cli/fetch.sh`
 ```bash
 # Passes all arguments through to the fetch CLI
 docker exec -it sass-app-dev npm run fetch -- "$@"
@@ -185,7 +185,7 @@ Missing any throws: `[CRITICAL CONFIG ERROR]: Missing environment variable [KEY]
 
 ## Logging System
 
-**File**: `src/utils/logger.js`
+**File**: `src/lib/utils/logger.js`
 
 **Library**: Winston 3.x
 
@@ -264,12 +264,12 @@ PERF_MONITOR_CONFIG: {
 
 | Script | Command | Description |
 |---|---|---|
-| `npm run dev` | `cross-env NODE_ENV=development nodemon server.js` | Dev server with hot-reload |
+| `npm run dev` | `cross-env NODE_ENV=development node --watch server.js` | Dev server with hot-reload |
 | `npm start` | `cross-env NODE_ENV=production node server.js` | Production server |
-| `npm test` | `cross-env NODE_ENV=test jest --runInBand --detectOpenHandles` | Run Jest tests (100 across 9 suites) |
-| `npm run seed` | `node cli/seed.js` | Run database seeders (driver-aware) |
-| `npm run models` | `node cli/list-models.js` | List models, tables, and column types |
-| `npm run fetch` | `node cli/fetch.js` | Query database records |
+| `npm test` | `cross-env NODE_ENV=test jest --runInBand --detectOpenHandles` | Run Jest tests (117 across 12 suites) |
+| `npm run seed` | `node src/tools/cli/seed.js` | Run database seeders (driver-aware) |
+| `npm run models` | `node src/tools/cli/list-models.js` | List models, tables, and column types |
+| `npm run fetch` | `node src/tools/cli/fetch.js` | Query database records |
 
 ---
 

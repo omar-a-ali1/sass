@@ -14,7 +14,7 @@ const path = require('path');
 const j2s = require('joi-to-swagger');
 const m2s = require('mongoose-to-swagger');
 const baseResponses = require('./responses');
-const { models } = require('../../bootstrap/loadModels');
+const { models } = require('../../../bootstrap/loadModels');
 
 /**
  * Recursively scan a directory for Joi validation files and convert

@@ -10,7 +10,7 @@
  * @module strategies/email/smtpEmail
  */
 
-const env = require('../../config/environment');
+const env = require('../../../config/environment');
 
 class SmtpEmailStrategy
 {

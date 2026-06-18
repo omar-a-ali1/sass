@@ -225,7 +225,7 @@ module.exports = { getUser, listUsers };
 Located in `src/services/`. A service encapsulates **business logic** and depends on repositories or other services via constructor injection.
 
 ```js
-const NotFoundError = require('../errors/NotFoundError');
+const NotFoundError = require('../lib/errors/NotFoundError');
 
 class UserService {
   constructor({ userRepository }) {
@@ -245,7 +245,7 @@ module.exports = UserService;
 **Rules:**
 - Never import `req` or `res` — services are transport-agnostic
 - Never call `new` on dependencies — receive them via constructor
-- Use custom errors from `src/errors/` for business rule violations
+- Use custom errors from `src/lib/errors/` for business rule violations
 - All public methods should be `async`
 
 ---
@@ -318,7 +318,7 @@ The bootstrap auto-loader (`loadModels.js`) picks it up automatically at startup
 ```bash
 npm run sync                    # Sync all models
 npm run sync User Store         # Sync specific models
-bash docker-cli/sync.sh         # Sync all models (Docker)
+bash src/tools/docker-cli/sync.sh         # Sync all models (Docker)
 ```
 
 The tool reads each Mongoose model definition, derives the column types, and applies only additive changes — never drops or alters existing columns. Existing data is always preserved. For MongoDB, Mongoose auto-creates collections and fields on first write, so no sync step is needed.
@@ -597,7 +597,7 @@ The tag is derived from the immediate parent folder name. For example, a route a
 
 ## 16. Implementing a Strategy Backend
 
-Strategy files are in `src/strategies/`. Each domain has interchangeable implementations.
+Strategy files are in `src/lib/strategies/`. Each domain has interchangeable implementations.
 
 ### Existing Strategies
 
@@ -610,7 +610,7 @@ Strategy files are in `src/strategies/`. Each domain has interchangeable impleme
 ### Adding a new strategy
 
 ```js
-// src/strategies/email/smtp.strategy.js
+// src/lib/strategies/email/smtp.strategy.js
 class SmtpStrategy {
   async send(to, subject, body) {
     // nodemailer logic here
@@ -702,7 +702,7 @@ Files are auto-discovered by `src/bootstrap/loadSeeders.js` — no manual regist
 | `RATE_LIMIT_MAX` | `100` | Max requests per rate-limit window |
 | `DB_DRIVER` | `mongo` | Database strategy (`mongo` or `postgres`) |
 | `STORAGE_DRIVER` | `local` | Storage strategy (`local` or `s3`) |
-| `EMAIL_DRIVER` | `console` | Email strategy (`console` or `stub`) |
+| `EMAIL_DRIVER` | `console` | Email strategy (`console`, `smtp`, or `stub`) |
 
 ### System Config (`src/config/system.js`)
 
@@ -717,7 +717,7 @@ Files are auto-discovered by `src/bootstrap/loadSeeders.js` — no manual regist
 ### Middleware Pipeline (default order)
 
 ```
-favicon → helmet → cors → cookieParser → json → rateLimiter → perfMonitor → tracer → injectServices → routes → errorHandler
+favicon → helmet → cors → cookieParser → json → urlencoded → rateLimiter → perfMonitor → tracer → injectServices → responder → activityLog → routes → errorHandler
 ```
 
 Edit `MIDDLEWARE_PIPELINE` in `src/config/system.js` to reorder or omit middleware. Add new keys by registering in `middlewareMap` in `src/bootstrap/index.js`.
@@ -774,7 +774,7 @@ Tests live in `src/tests/` and use Jest.
 
 ```bash
 npm test                          # local (117 tests)
-bash docker-cli/test.sh           # Docker
+bash src/tools/docker-cli/test.sh           # Docker
 ```
 
 **Key test files:**

@@ -8,7 +8,7 @@
 
 | Command | Description |
 |---|---|
-| `npm run dev` | Start dev server with `nodemon` (auto-restarts on file changes) |
+| `npm run dev` | Start dev server with `node --watch` (auto-restarts on file changes) |
 | `npm start` | Start production server (`NODE_ENV=production`) |
 | `npm test` | Run all 117 tests across 12 suites |
 | `npm run sync` | Sync PostgreSQL schema from Mongoose models — creates missing tables and columns |
@@ -94,17 +94,17 @@ Both tools auto-detect the active database driver (`mongo` or `postgres`) from `
 
 ## Docker CLI
 
-Predefined shell scripts in [`docker-cli/`](../docker-cli) for common Docker Compose workflows.
+Predefined shell scripts in [`src/tools/docker-cli/`](../src/tools/docker-cli) for common Docker Compose workflows.
 
 | Script | Command | What it does |
 |---|---|---|
-| `dev.sh` | `bash docker-cli/dev.sh` | Start dev app + MongoDB + PostgreSQL containers with live-reload |
-| `dev-postgres.sh` | `bash docker-cli/dev-postgres.sh` | Start dev app + PostgreSQL containers |
-| `test.sh` | `bash docker-cli/test.sh` | Start test app + MongoDB containers, run all tests |
-| `seed.sh` | `bash docker-cli/seed.sh` | Run seeders inside the running dev container |
-| `sync.sh` | `bash docker-cli/sync.sh` | Sync PostgreSQL schema from Mongoose models — creates missing tables and columns |
-| `models.sh` | `bash docker-cli/models.sh` | Show models and columns from the running dev container |
-| `fetch.sh` | `bash docker-cli/fetch.sh User --limit 5` | Query records from the running dev container |
+| `dev.sh` | `npm run docker:dev` / `bash src/tools/docker-cli/dev.sh` | Start dev app + MongoDB + PostgreSQL containers with live-reload |
+| `dev-postgres.sh` | `npm run docker:dev-postgres` / `bash src/tools/docker-cli/dev-postgres.sh` | Start dev app + PostgreSQL containers |
+| `test.sh` | `npm run docker:test` / `bash src/tools/docker-cli/test.sh` | Start test app + MongoDB containers, run all tests |
+| `seed.sh` | `npm run docker:seed` / `bash src/tools/docker-cli/seed.sh` | Run seeders inside the running dev container |
+| `sync.sh` | `npm run docker:sync` / `bash src/tools/docker-cli/sync.sh` | Sync PostgreSQL schema from Mongoose models — creates missing tables and columns |
+| `models.sh` | `npm run docker:models` / `bash src/tools/docker-cli/models.sh` | Show models and columns from the running dev container |
+| `fetch.sh` | `npm run docker:fetch -- User --limit 5` / `bash src/tools/docker-cli/fetch.sh User --limit 5` | Query records from the running dev container |
 
 All scripts manage dependencies automatically via Docker Compose health checks (MongoDB must be healthy before the app starts).
 
@@ -121,13 +121,13 @@ Defined in [`docker-compose.yaml`](../docker-compose.yaml):
 
 ```bash
 # Development
-bash docker-cli/dev.sh
+bash src/tools/docker-cli/dev.sh
 
 # Run tests
-bash docker-cli/test.sh
+bash src/tools/docker-cli/test.sh
 
 # Seed database (in another terminal)
-bash docker-cli/seed.sh
+bash src/tools/docker-cli/seed.sh
 ```
 
 > **Note**: Docker Compose v2 (`docker compose`) is required. No manual `docker-compose` v1 support.

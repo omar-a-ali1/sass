@@ -4,7 +4,7 @@ const app = require("./src/app");
 
 const config = require('./src/config/environment');
 const connectDB = require('./src/config/database');
-const logger = require('./src/utils/logger');
+const logger = require('./src/lib/utils/logger');
 
 const startServer = async () => {
   const container = app.container;

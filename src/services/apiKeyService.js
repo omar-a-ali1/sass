@@ -8,7 +8,7 @@
  */
 
 const crypto = require('crypto');
-const NotFoundError = require('../errors/NotFoundError');
+const NotFoundError = require('../lib/errors/NotFoundError');
 
 class ApiKeyService
 {

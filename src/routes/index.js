@@ -5,8 +5,8 @@ module.exports = {
   path: '/',
   handler: (req, res) => {
     if (config.env === 'development') {
-      const { collectRoutes } = require('../bootstrap/loadRoutes');
-      const routes = collectRoutes().map((r) => ({
+      const { cachedRoutes } = require('../bootstrap/loadRoutes');
+      const routes = cachedRoutes.map((r) => ({
         method: r.method.toUpperCase(),
         path: r.path,
         handler: r.handler.name || '(anonymous)',

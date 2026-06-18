@@ -8,10 +8,10 @@
  * @module services/authService
  */
 
-const ConflictError = require("../errors/ConflictError");
-const UnauthorizedError = require('../errors/UnauthorizedError')
-const NotFoundError = require('../errors/NotFoundError')
-const sanitizeData = require('../utils/sanitizeData');
+const ConflictError = require('../lib/errors/ConflictError');
+const UnauthorizedError = require('../lib/errors/UnauthorizedError')
+const NotFoundError = require('../lib/errors/NotFoundError')
+const sanitizeData = require('../lib/utils/sanitizeData');
 
 class AuthService
 {

@@ -197,7 +197,7 @@ class UserRepository {
 
 ## Pattern 5: Strategy Pattern
 
-**Directory**: `src/strategies/`
+**Directory**: `src/lib/strategies/`
 
 Pluggable backends for infrastructure concerns. Each domain defines an interface with multiple implementations.
 
@@ -229,7 +229,7 @@ Full implementation using `@aws-sdk/client-s3`. Uses lazy `require()` for option
 
 ## Pattern 6: Error Hierarchy
 
-**Directory**: `src/errors/`
+**Directory**: `src/lib/errors/`
 
 ```
 Error
@@ -302,29 +302,29 @@ server.js
   ├── src/bootstrap/index.js
   │   ├── loadModels.js ──── models/User.js (via mongoose-to-swagger → OpenAPI schemas)
    │   ├── loadContainer.js (auto-discovers repos + services)
-  │   │   ├── strategies/database/mongo.strategy.js (or postgres — config-driven)
-  │   │   ├── strategies/storage/localStorage.strategy.js (or s3 — config-driven)
-  │   │   ├── strategies/email/consoleEmail.strategy.js (or stub — config-driven)
-  │   │   ├── repositories/user.repository.js
-  │   │   │   └── strategies/database/*.strategy.js (dbStrategy)
-  │   │   ├── repositories/security.repository.js
-  │   │   ├── services/authService.js
-  │   │   │   ├── errors/ConflictError.js ──── errors/appErrors.js ──── config/system.js
-  │   │   │   └── repositories/user.repository.js
-  │   │   └── services/securityService.js
-  │   │       └── repositories/security.repository.js
-  │   ├── loadRoutes.js ──── routes/api/v1/**/*.js
-  │   └── loadSwagger.js ──── swagger/components/index.js
-  │       └── joi-to-swagger + mongoose-to-swagger
-  ├── config/environment.js
-  ├── config/security.js
-  └── utils/logger.js
+   │   │   ├── lib/strategies/database/mongo.strategy.js (or postgres — config-driven)
+   │   │   ├── lib/strategies/storage/localStorage.strategy.js (or s3 — config-driven)
+   │   │   ├── lib/strategies/email/consoleEmail.strategy.js (or stub — config-driven)
+   │   │   ├── repositories/user.repository.js
+   │   │   │   └── lib/strategies/database/*.strategy.js (dbStrategy)
+   │   │   ├── repositories/security.repository.js
+   │   │   ├── services/authService.js
+   │   │   │   ├── lib/errors/ConflictError.js ──── lib/errors/appErrors.js ──── config/system.js
+   │   │   │   └── repositories/user.repository.js
+   │   │   └── services/securityService.js
+   │   │       └── repositories/security.repository.js
+   │   ├── loadRoutes.js ──── routes/api/v1/**/*.js
+   │   └── loadSwagger.js ──── lib/swagger/components/index.js
+   │       └── joi-to-swagger + mongoose-to-swagger
+   ├── config/environment.js
+   ├── config/security.js
+   └── lib/utils/logger.js
 
 Middlewares:
-  ├── middlewares/auth.js ──── security.repository.js (verifyJwt)
-  ├── middlewares/authorize.js
-  ├── middlewares/validation.js ──── utils/formatJoiErrors.js
-  ├── middlewares/errorHandler.js ──── utils/logger.js
+   ├── middlewares/auth.js ──── security.repository.js (verifyJwt)
+   ├── middlewares/authorize.js
+   ├── middlewares/validation.js ──── lib/utils/formatJoiErrors.js
+   ├── middlewares/errorHandler.js ──── lib/utils/logger.js
   ├── middlewares/perfMonitor.js
   └── cookie-parser (npm package, called in bootstrap/index.js)
 ```

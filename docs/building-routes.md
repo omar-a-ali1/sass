@@ -81,7 +81,7 @@ route file (src/routes/.../*.js)          ← npm run make:route
   └── controller (src/controllers/)       ← npm run make:controller
        └── service (src/services/)        ← npm run make:service
             └── repository (src/repositories/)   ← npm run make:repository
-                 └── strategy (src/strategies/)
+                 └── strategy (src/lib/strategies/)
 ```
 
 Each layer is auto-discovered by the IoC container — zero manual wiring.

@@ -14,13 +14,13 @@
  * @module cli/sync-db
  */
 
-require('../src/config/environment');
+require('../../config/environment');
 
 const fs = require('fs');
 const path = require('path');
 const { Pool } = require('pg');
 
-const config = require('../src/config/environment');
+const config = require('../../config/environment');
 
 const PG_TYPE_MAP = {
   String:   'VARCHAR(255)',
@@ -162,7 +162,7 @@ async function main() {
     process.exit(1);
   }
 
-  const modelsDir = path.join(__dirname, '..', 'src', 'models');
+  const modelsDir = path.join(__dirname, '..', '..', 'models');
   const files = fs.readdirSync(modelsDir)
     .filter(f => f.endsWith('.js') && f !== 'index.js');
 

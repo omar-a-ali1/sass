@@ -32,19 +32,20 @@
 - **Validation Middleware**: [`src/middlewares/validation.js`](../src/middlewares/validation.js)
 - **Perf Monitor**: [`src/middlewares/perfMonitor.js`](../src/middlewares/perfMonitor.js)
 - **Cookie Parser**: `cookie-parser` (npm package)
-- **Model Inspector CLI**: [`cli/list-models.js`](../cli/list-models.js)
-- **DB Query CLI**: [`cli/fetch.js`](../cli/fetch.js)
+- **Model Inspector CLI**: [`src/tools/cli/list-models.js`](../src/tools/cli/list-models.js)
+- **DB Query CLI**: [`src/tools/cli/fetch.js`](../src/tools/cli/fetch.js)
 - **API Routes**: [`src/routes/api/v1/auth/`](../src/routes/api/v1/auth/)
-- **Error Base**: [`src/errors/appErrors.js`](../src/errors/appErrors.js)
-- **Logger**: [`src/utils/logger.js`](../src/utils/logger.js)
+- **Error Base**: [`src/lib/errors/appErrors.js`](../src/lib/errors/appErrors.js)
+- **Logger**: [`src/lib/utils/logger.js`](../src/lib/utils/logger.js)
 - **Getting Started Tutorial**: [`docs/tutorials/getting-started.md`](tutorials/getting-started.md)
+- **Simplify Proposal**: [`docs/proposals/simplify-core.md`](proposals/simplify-core.md)
 
 ## What's Implemented
 
 - Auth: register, login (access+refresh tokens), refresh-token, forgot-password, reset-password, get profile
 - JWT middleware with Bearer + cookie fallback + role-based `authorize()`
 - Strategy: MongoStrategy, PostgresStrategy, LocalStorageStrategy, S3StorageStrategy, ConsoleEmailStrategy, StubEmailStrategy
-- Per-route rate limiting: `createRateLimiter()` factory
+- Per-route rate limiting: declarative `rateLimit` property on route definitions
 - Auto-model loading: drop a file in `src/models/`, it's registered + auto-converted to OpenAPI schema
 - Auto-route loading: directory hierarchy maps to URL paths — drop a file, it's live
 - Auto-Swagger: Joi body schemas, query schemas, path params (`:id`), auth middleware all auto-detected
@@ -69,6 +70,6 @@
 The framework ships with two command interfaces:
 
 - **npm scripts** — `npm run make:*`, `npm run routes`, `npm run seed`, `npm run models`, `npm run fetch` — for direct host usage
-- **Docker CLI** — `bash docker-cli/{dev,dev-postgres,test,seed,models,fetch}.sh` — predefined Compose workflows with DB health checks
+- **Docker CLI** — `bash src/tools/docker-cli/{dev,dev-postgres,test,seed,models,fetch}.sh` — predefined Compose workflows with DB health checks
 
 See the [CLI Reference](cli-reference.md) for the full command catalogue.

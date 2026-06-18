@@ -8,7 +8,7 @@
  * @module middlewares/errorHandler
  */
 
-const logger = require('../utils/logger');
+const logger = require('../lib/utils/logger');
 const { HTTP_REQUESTS } = require('../config/system');
 
 /**

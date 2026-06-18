@@ -107,7 +107,7 @@ Controllers consistently use `res.respond(data)`, `res.paginated(result)`, `res.
 
 ## 5. sanitizeData — Dual-Mode Sanitizer
 
-`src/utils/sanitizeData.js` was refactored to support two calling conventions:
+`src/lib/utils/sanitizeData.js` was refactored to support two calling conventions:
 
 | Pattern | Usage | When |
 |---|---|---|
@@ -301,12 +301,12 @@ Both tools work with PostgreSQL (`pg.Pool`) and MongoDB (`mongoose`) transparent
 
 ## 10. Docker CLI Updates
 
-New scripts in `docker-cli/`:
+New scripts in `src/tools/docker-cli/`:
 
 | Script | Command | What it does |
 |---|---|---|
-| `models.sh` | `bash docker-cli/models.sh` | Show all models and columns from the running dev container |
-| `fetch.sh` | `bash docker-cli/fetch.sh User --limit 5` | Query records (passes `$@` through to the container) |
+| `models.sh` | `bash src/tools/docker-cli/models.sh` | Show all models and columns from the running dev container |
+| `fetch.sh` | `bash src/tools/docker-cli/fetch.sh User --limit 5` | Query records (passes `$@` through to the container) |
 
 All scripts manage dependency health checks (PostgreSQL + MongoDB must be healthy before the command runs).
 

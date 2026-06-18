@@ -11,7 +11,7 @@
 
 const crypto = require('crypto')
 const morgan = require('morgan')
-const logger = require("../utils/logger")
+const logger = require('../lib/utils/logger')
 
 /** Register a custom Morgan token for the request ID */
 morgan.token('id', (req) => req.id);

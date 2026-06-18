@@ -38,7 +38,7 @@ Every feature follows this exact chain. Never skip layers. Never put business lo
 ### Services
 - Receive dependencies via constructor injection: `constructor({ repo })`
 - Never import `req` or `res`
-- Use typed errors from `src/errors/` (NotFoundError, ConflictError, etc.)
+- Use typed errors from `src/lib/errors/` (NotFoundError, ConflictError, etc.)
 - All public methods are async
 
 ### Repositories
@@ -49,7 +49,7 @@ Every feature follows this exact chain. Never skip layers. Never put business lo
 - Joi schemas in `src/validation/` — auto-documented in Swagger via `validate()` / `validateQuery()` middleware
 
 ### Data Sanitization
-- Use `sanitizeData()` from `src/utils/sanitizeData.js` to strip `password` and `__v` before responses
+- Use `sanitizeData()` from `src/lib/utils/sanitizeData.js` to strip `password` and `__v` before responses
 - `users.map(sanitizeData(['token']))` for collections with extra fields
 - `sanitizeData(user)` for single docs
 
@@ -67,10 +67,10 @@ npm run make:seeder -- Product   # seeder with Faker
 - `src/bootstrap/loadContainer.js` — IoC auto-wiring
 - `src/bootstrap/loadSwagger.js` — Swagger auto-generation
 - `src/middlewares/responder.js` — res.respond/paginated/fail
-- `src/utils/sanitizeData.js` — data sanitizer
+- `src/lib/utils/sanitizeData.js` — data sanitizer
 
 ## Testing
 
-- `npm test` — all 85+ tests must pass
+- `npm test` — all 117 tests must pass
 - Mongoose is mocked — no DB needed
 - Follow existing test patterns in `src/tests/`

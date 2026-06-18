@@ -12,16 +12,22 @@ src/
   bootstrap/     Auto-loaders (routes, models, Swagger, container)
   config/        Environment + system config
   controllers/   HTTP handlers (thin — delegate to services)
-  errors/        Typed error classes (AppError subclasses)
   middlewares/   Auth, validation, rate limiter, responder, upload
   models/        Mongoose schemas
   repositories/  Data access via dbStrategy
   routes/        Route definitions (directory = URL prefix)
   services/      Business logic with DI
-  strategies/    Pluggable backends (mongo, postgres, s3, localStorage, email)
-  utils/         Helpers (logger, sanitizeData)
   validation/    Joi schemas
-cli/             Scaffold generator, route lister, seed runner
+  seeders/       Auto-discovered seed files
+  tests/         Jest test suites
+  lib/
+    errors/      Typed error classes (AppError subclasses)
+    utils/       Helpers (logger, sanitizeData)
+    strategies/  Pluggable backends (mongo, postgres, s3, localStorage, email)
+    assets/      Static assets (favicon)
+  tools/
+    cli/         Scaffold generator, route lister, seed runner
+    docker-cli/  Docker workflow scripts
 ```
 
 ## Route Auto-Discovery
@@ -60,10 +66,10 @@ users.map(sanitizeData)                // collection, defaults only
 
 ## Error Handling
 
-All errors are typed subclasses of `AppError` in `src/errors/`. Throw in services, caught by `errorHandler`.
+All errors are typed subclasses of `AppError` in `src/lib/errors/`. Throw in services, caught by `errorHandler`.
 
 ## Testing
 
-- `npm test` — 85+ tests, Jest + Supertest
+- `npm test` — 117 tests, Jest + Supertest
 - Mongoose is mocked — no MongoDB required
 - Tests live in `src/tests/`

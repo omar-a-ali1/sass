@@ -8,8 +8,8 @@ require('dotenv').config({
   override: true,
 });
 
-const config = require('../src/config/environment');
-const { models } = require('../src/bootstrap/loadModels');
+const config = require('../../config/environment');
+const { models } = require('../../bootstrap/loadModels');
 
 const modelNames = Object.keys(models);
 const colors = {

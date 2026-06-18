@@ -9,7 +9,7 @@ describe('ConsoleEmailStrategy', () => {
   let strategy;
 
   beforeAll(() => {
-    ConsoleEmailStrategy = require('../strategies/email/consoleEmail.strategy');
+    ConsoleEmailStrategy = require('../lib/strategies/email/consoleEmail.strategy');
   });
 
   beforeEach(() => {
@@ -39,7 +39,7 @@ describe('StubEmailStrategy', () => {
   let strategy;
 
   beforeAll(() => {
-    StubEmailStrategy = require('../strategies/email/stubEmail.strategy');
+    StubEmailStrategy = require('../lib/strategies/email/stubEmail.strategy');
   });
 
   beforeEach(() => {
@@ -57,7 +57,7 @@ describe('SmtpEmailStrategy', () => {
 
   beforeAll(() => {
     jest.spyOn(console, 'warn').mockImplementation(() => {});
-    SmtpEmailStrategy = require('../strategies/email/smtpEmail.strategy');
+    SmtpEmailStrategy = require('../lib/strategies/email/smtpEmail.strategy');
   });
 
   beforeEach(() => {

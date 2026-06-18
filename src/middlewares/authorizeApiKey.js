@@ -1,4 +1,4 @@
-const ForbiddenError = require('../errors/ForbiddenError');
+const ForbiddenError = require('../lib/errors/ForbiddenError');
 
 const authorizeApiKey = (...perms) => {
   const flatPerms = perms.flat();

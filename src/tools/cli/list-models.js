@@ -2,10 +2,10 @@
 
 const path = require('path');
 
-const config = require('../src/config/environment');
-const { models: localModels } = require('../src/bootstrap/loadModels');
+const config = require('../../config/environment');
+const { models: localModels } = require('../../bootstrap/loadModels');
 
-const modelsDir = path.join(__dirname, '..', 'src', 'models');
+const modelsDir = path.join(__dirname, '..', '..', 'models');
 
 const fs = require('fs');
 const files = fs.readdirSync(modelsDir).filter(f => f.endsWith('.js') && f !== 'index.js');

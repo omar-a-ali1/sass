@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
 const path = require('path');
-const { collectRoutes } = require('../src/bootstrap/loadRoutes');
-const config = require('../src/config/environment');
+const { collectRoutes } = require('../../bootstrap/loadRoutes');
+const config = require('../../config/environment');
 
 const routes = collectRoutes();
 
