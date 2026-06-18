@@ -15,7 +15,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/node-22.x-green" alt="Node"/>
   <img src="https://img.shields.io/badge/express-5.x-blue" alt="Express"/>
-  <img src="https://img.shields.io/badge/tests-100_passing-brightgreen" alt="Tests"/>
+  <img src="https://img.shields.io/badge/tests-117_passing-brightgreen" alt="Tests"/>
   <img src="https://img.shields.io/badge/license-MIT-brightgreen" alt="License"/>
 </p>
 

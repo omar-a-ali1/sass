@@ -3,6 +3,30 @@
   "version": "1.0.0",
   "description": "A lightweight mini-framework built on Node.js and Express for scalable architectures",
   "main": "server.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/omar-a-ali1/sass.git"
+  },
+  "bugs": {
+    "url": "https://github.com/omar-a-ali1/sass/issues"
+  },
+  "homepage": "https://github.com/omar-a-ali1/sass#readme",
+  "keywords": [
+    "node",
+    "express",
+    "framework",
+    "di",
+    "ioc",
+    "strategy-pattern",
+    "swagger",
+    "scaffold",
+    "mongoose",
+    "postgres",
+    "docker"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "scripts": {
     "test": "cross-env NODE_ENV=test jest --runInBand --detectOpenHandles",
     "dev": "cross-env NODE_ENV=development node --watch server.js",
@@ -30,7 +54,10 @@
     "docker:fetch": "bash src/tools/docker-cli/fetch.sh",
     "docker:sync": "bash src/tools/docker-cli/sync.sh"
   },
-  "author": "OMAR AIT ALI",
+  "author": {
+    "name": "OMAR AIT ALI",
+    "url": "https://github.com/omar-a-ali1"
+  },
   "license": "MIT",
   "dependencies": {
     "bcrypt": "^6.0.0",
