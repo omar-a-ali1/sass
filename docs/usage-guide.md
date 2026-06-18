@@ -19,12 +19,14 @@ A practical guide to adding new features, extending the framework, and following
 11. [Applying Per-Route Rate Limiting](#11-applying-per-route-rate-limiting)
 12. [Authenticating Routes (JWT)](#12-authenticating-routes-jwt)
 13. [Role-Based Authorization](#13-role-based-authorization)
-14. [Exposing in Swagger](#14-exposing-in-swagger)
-15. [Implementing a Strategy Backend](#15-implementing-a-strategy-backend)
-16. [Database Seeders](#16-database-seeders)
-17. [Configuration Reference](#17-configuration-reference)
-18. [Testing](#18-testing)
-19. [Conventions Summary](#19-conventions-summary)
+14. [API Key Authentication](#14-api-key-authentication)
+15. [Exposing in Swagger](#15-exposing-in-swagger)
+16. [Implementing a Strategy Backend](#16-implementing-a-strategy-backend)
+17. [Database Seeders](#17-database-seeders)
+18. [Configuration Reference](#18-configuration-reference)
+19. [Scaffold Generator (CLI)](#19-scaffold-generator-cli)
+20. [Testing](#20-testing)
+21. [Conventions Summary](#21-conventions-summary)
 
 ---
 
@@ -311,6 +313,16 @@ module.exports = mongoose.model('Product', productSchema);
 
 The bootstrap auto-loader (`loadModels.js`) picks it up automatically at startup and converts it to an OpenAPI schema via `mongoose-to-swagger`.
 
+**PostgreSQL schema sync:** Use the sync tool to keep your database schema in line with your model definitions:
+
+```bash
+npm run sync                    # Sync all models
+npm run sync User Store         # Sync specific models
+bash docker-cli/sync.sh         # Sync all models (Docker)
+```
+
+The tool reads each Mongoose model definition, derives the column types, and applies only additive changes — never drops or alters existing columns. Existing data is always preserved. For MongoDB, Mongoose auto-creates collections and fields on first write, so no sync step is needed.
+
 ---
 
 ## 10. Registering in the Container
@@ -405,7 +417,84 @@ Returns `403 ForbiddenError` if the user's role is not in the allowed list.
 
 ---
 
-## 14. Exposing in Swagger
+## 14. API Key Authentication
+
+Routes can be protected using API keys instead of JWT tokens. API keys are persisted as bcrypt hashes — the raw key is only visible once at creation.
+
+### Managing API Keys
+
+Authenticated users can create, list, and revoke API keys via the API:
+
+```bash
+# Create an API key (requires JWT auth)
+curl -X POST http://localhost:5000/api/v1/api-keys \
+  -H "Authorization: Bearer <jwt>" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"My CLI Key","permissions":["read:users"]}'
+# Returns: { apiKey: { ... }, rawKey: "sass_a1b2c3d4..." }
+
+# List keys
+curl http://localhost:5000/api/v1/api-keys \
+  -H "Authorization: Bearer <jwt>"
+
+# Revoke a key
+curl -X DELETE http://localhost:5000/api/v1/api-keys/<id> \
+  -H "Authorization: Bearer <jwt>"
+```
+
+### Using API Keys on Protected Routes
+
+Pass the API key via the `X-API-Key` header:
+
+```bash
+# List users with an API key
+curl http://localhost:5000/api/v1/users \
+  -H "X-API-Key: sass_a1b2c3d4e5f6..."
+
+# Pipe raw JSON through jq
+curl -s http://localhost:5000/api/v1/users \
+  -H "X-API-Key: sass_a1b2c3d4e5f6..." | jq '.data'
+```
+
+### Adding API Key Auth to a Route
+
+```js
+const apiKeyAuth = require('../../../middlewares/apiKeyAuth');
+
+module.exports = {
+  method: 'get',
+  path: '/data',
+  middleware: [apiKeyAuth],
+  handler: myHandler,
+};
+```
+
+On success, `req.apiKey` contains `{ id, name, permissions }` and `req.user` contains `{ id }`.
+
+### Creating and Revoking Keys (CLI with curl)
+
+```bash
+# Create a key (requires JWT auth)
+TOKEN="eyJhbGciOiJIUzI1NiIs..."
+curl -X POST http://localhost:5000/api/v1/api-keys \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"dev-cli","permissions":["read:users"]}'
+
+# Save the rawKey from the response — it is shown only once
+
+# List existing keys
+curl http://localhost:5000/api/v1/api-keys \
+  -H "Authorization: Bearer $TOKEN"
+
+# Revoke a key
+curl -X DELETE http://localhost:5000/api/v1/api-keys/<key-id> \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+---
+
+## 15. Exposing in Swagger
 
 Swagger docs are auto-generated from route files. Add a `docs` property:
 
@@ -495,7 +584,7 @@ The tag is derived from the immediate parent folder name. For example, a route a
 
 ---
 
-## 15. Implementing a Strategy Backend
+## 16. Implementing a Strategy Backend
 
 Strategy files are in `src/strategies/`. Each domain has interchangeable implementations.
 
@@ -534,7 +623,7 @@ PostgresStrategy and S3StorageStrategy use **lazy `require()`** inside their met
 
 ---
 
-## 16. Database Seeders
+## 17. Database Seeders
 
 Seeders populate your development database with realistic test data using `@faker-js/faker`.
 
@@ -582,7 +671,7 @@ Files are auto-discovered by `src/bootstrap/loadSeeders.js` — no manual regist
 
 
 
-## 17. Configuration Reference
+## 18. Configuration Reference
 
 ### Environment Variables
 
@@ -624,7 +713,7 @@ Edit `MIDDLEWARE_PIPELINE` in `src/config/system.js` to reorder or omit middlewa
 
 ---
 
-## 18. Scaffold Generator (CLI)
+## 19. Scaffold Generator (CLI)
 
 The framework provides Laravel-style `make:*` commands to scaffold individual artifacts or full resources:
 
@@ -668,12 +757,12 @@ After generating, the container auto-discovers the new repository and service fi
 
 ---
 
-## 19. Testing
+## 20. Testing
 
 Tests live in `src/tests/` and use Jest.
 
 ```bash
-npm test                          # local (100 tests)
+npm test                          # local (117 tests)
 bash docker-cli/test.sh           # Docker
 ```
 
@@ -685,6 +774,9 @@ bash docker-cli/test.sh           # Docker
 | `auth.middleware.test.js` | 10 | Authenticate + authorize middleware |
 | `dynamic-routes.test.js` | 7 | Path params, query validation |
 | `strategies.test.js` | 20 | Mongo, Postgres, LocalStorage, S3Storage |
+| `apiKey.test.js` | 12 | API key generation, validation, revocation |
+| `softDelete.strategy.test.js` | 4 | Soft delete strategy methods |
+| `email.strategy.test.js` | 3 | Console, SMTP fallback, and stub email |
 | `rateLimiter.test.js` | 8 | Rate limiter factory |
 | `security.repository.test.js` | 10 | JWT sign/verify, bcrypt |
 | `env.test.js` | 3 | Env loading |
@@ -695,7 +787,7 @@ bash docker-cli/test.sh           # Docker
 
 ---
 
-## 20. Conventions Summary
+## 21. Conventions Summary
 
 | Concern | Location | Responsibility |
 |---|---|---|

@@ -148,6 +148,20 @@ class PostgresStrategy {
     const { rows } = await pool.query(text, values);
     return rows;
   }
+
+  async softDelete(model, id) {
+    const pool = await this._getPool();
+    const text = `UPDATE ${this._table(model)} SET "deletedAt" = NOW() WHERE "id" = $1 RETURNING *`;
+    const { rows } = await pool.query(text, [id]);
+    return rows[0] || null;
+  }
+
+  async restore(model, id) {
+    const pool = await this._getPool();
+    const text = `UPDATE ${this._table(model)} SET "deletedAt" = NULL WHERE "id" = $1 RETURNING *`;
+    const { rows } = await pool.query(text, [id]);
+    return rows[0] || null;
+  }
 }
 
 module.exports = PostgresStrategy;

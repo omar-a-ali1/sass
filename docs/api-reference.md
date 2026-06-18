@@ -251,6 +251,14 @@ Ordered array of middleware keys applied globally:
 | `getUser` | `GET /users/:id` | `req.params.id` → `userService.get(id)` |
 | `listUsers` | `GET /users` | `req.validatedQuery` → `userService.list(query)` |
 
+### `src/controllers/apiKey.controller.js`
+
+| Function | Route | Description |
+|---|---|---|
+| `create` | `POST /api-keys` | Authenticated — generates a new API key, returns `{ apiKey, rawKey }` |
+| `list` | `GET /api-keys` | Authenticated — lists all keys for the current user |
+| `revoke` | `DELETE /api-keys/:id` | Authenticated — deactivates a key by ID |
+
 ---
 
 ## 5. Error Hierarchy
@@ -322,6 +330,10 @@ Attaches convenience methods to `res`:
 | `res.paginated` | `(paginatedResult, statusCode = 200)` | `{ success, traceId, data, meta: { total, page, limit, totalPages } }` |
 | `res.fail` | `(message, statusCode = 400)` | `{ success: false, traceId, error }` |
 
+### `src/middlewares/apiKeyAuth.js` — API Key Authentication
+
+`apiKeyAuth(req, res, next)`: Reads `X-API-Key` header, validates via `apiKeyService.validateKey()`. On success sets `req.apiKey = { id, name, permissions }` and `req.user = { id }`. Returns 401 on failure. See the [API key tutorial](tutorials/api-keys.md).
+
 ### `src/middlewares/upload.js` — File Upload
 
 Factory that returns `[multerMiddleware, persistMiddleware]`:
@@ -357,6 +369,21 @@ upload({ field, maxCount, maxSize, allowedMimes, prefix })
 | `password` | `String` | Hashed password |
 | `role` | `String` (default: `'user'`) | Role for authorization |
 
+### `src/models/ApiKey.js` — API Key Model
+
+| Field | Type | Description |
+|---|---|---|
+| `prefix` | `String` | Lookup prefix (first 12 chars of the raw key) |
+| `hashedKey` | `String` | Bcrypt hash of the full raw key |
+| `name` | `String` | Human-readable label |
+| `user` | `String` | Owner's user ID |
+| `lastUsedAt` | `Date` | Timestamp of last successful validation |
+| `expiresAt` | `Date` | Optional expiration date |
+| `active` | `Boolean` (default: `true`) | Whether the key is active |
+| `permissions` | `[String]` | Optional permission scopes |
+
+Indexed on `prefix` and `user`. The raw key is returned once at creation and never stored.
+
 ### Auto-Model Loading
 
 `bootstrap/loadModels.js` scans `src/models/` and auto-registers each model with Mongoose. Additionally converts each to an OpenAPI schema via `mongoose-to-swagger`, accessible via the exported `modelSchemas`.
@@ -377,6 +404,17 @@ upload({ field, maxCount, maxSize, allowedMimes, prefix })
 | `paginate(query, opts)` | `dbStrategy.paginate('User', query, opts)` — supports page, limit, sort |
 
 Receives `{ dbStrategy }` via constructor injection.
+
+### `src/repositories/apiKey.repository.js`
+
+| Method | Description |
+|---|---|
+| `findByPrefix(prefix)` | `dbStrategy.findOne('ApiKey', { prefix })` — looks up by key prefix |
+| `findById(id)` | `dbStrategy.findById('ApiKey', id)` |
+| `findByUserId(userId)` | `dbStrategy.find('ApiKey', { user: userId })` |
+| `create(keyData)` | `dbStrategy.create('ApiKey', keyData)` |
+| `updateLastUsed(id)` | `dbStrategy.findByIdAndUpdate('ApiKey', id, { lastUsedAt: new Date() })` |
+| `deactivate(id)` | `dbStrategy.findByIdAndUpdate('ApiKey', id, { active: false })` — revoke a key |
 
 ### `src/repositories/security.repository.js`
 
@@ -414,9 +452,13 @@ routes/
       │   ├── forgot-password.js   POST    /forgot-password
       │   ├── reset-password.js    POST    /reset-password
       │   └── me.js                GET     /me
-      └── users/
-          ├── getUser.js           GET     /:id
-          └── listUsers.js         GET     /
+      ├── users/
+      │   ├── getUser.js           GET     /:id
+      │   └── listUsers.js         GET     /
+      └── api-keys/
+          ├── create.js            POST    /
+          ├── list.js              GET     /
+          └── revoke.js            DELETE  /:id
 ```
 
 Each file exports `{ method, path, middleware, handler }`. The bootstrap auto-loader recursively scans `routes/` and maps directory hierarchy to URL paths (e.g. `routes/api/v1/auth/login.js` → `POST /api/v1/auth/login`).
@@ -449,7 +491,7 @@ const EmailStrategy = { console: ConsoleEmailStrategy, stub: StubEmailStrategy }
 
 **Services** (`src/services/*Service.js`) are auto-discovered with multi-pass dependency resolution — if `AuthService` needs `securityService` but `SecurityService` isn't registered yet, the resolver retries until all deps are satisfied or no more progress can be made.
 
-**Registered services**: `dbStrategy`, `storageStrategy`, `emailStrategy`, `securityRepository`, `userRepository`, `securityService`, `userService`, `authService`.
+**Registered services**: `dbStrategy`, `storageStrategy`, `emailStrategy`, `securityRepository`, `userRepository`, `apiKeyRepository`, `securityService`, `userService`, `authService`, `apiKeyService`.
 
 To add a new repository or service, just drop the file in the correct directory — the container picks it up automatically.
 
@@ -471,6 +513,15 @@ To add a new repository or service, just drop the file in the correct directory 
 | `get(id)` | Returns user or `NotFoundError`. Sanitises output (strips password). |
 | `list(query)` | Extracts `{ page, limit, sort, search }`, builds `$or` filter for search, delegates to `userRepository.paginate()`. |
 
+### `src/services/apiKeyService.js`
+
+| Method | Description |
+|---|---|
+| `generateKey(userId, name, permissions)` | Generates `sass_` + 64 hex chars, bcrypt-hashes the key, stores hash + prefix. Returns `{ apiKey, rawKey }` — raw key is one-time only. |
+| `validateKey(key)` | Extracts prefix, looks up record, bcrypt-compares, checks expiry/active, updates `lastUsedAt`. Returns `null` on any failure. |
+| `revokeKey(id)` | Deactivates an API key by ID. Throws `NotFoundError` if missing. |
+| `listKeys(userId)` | Returns all API keys for a given user. |
+
 ### `src/services/securityService.js`
 
 | Method | Description |
@@ -490,8 +541,12 @@ To add a new repository or service, just drop the file in the correct directory 
 
 | Strategy | Status | Methods |
 |---|---|---|
-| `mongo.strategy.js` | **Full** | `create`, `findById`, `findOne`, `find`, `paginate`, `update`, `delete`, `count`, `truncate`, `insertMany` |
-| `postgres.strategy.js` | **Full** | Same interface + `truncate`, `insertMany`; lazy `pg.Pool`, parameterised queries |
+| `mongo.strategy.js` | **Full** | `create`, `findById`, `findOne`, `find`, `paginate`, `update`, `delete`, `count`, `truncate`, `insertMany`, `softDelete`, `restore` |
+| `postgres.strategy.js` | **Full** | Same interface + `truncate`, `insertMany`, `softDelete`, `restore`; lazy `pg.Pool`, parameterised queries |
+
+**Soft delete methods:**
+- `softDelete(model, id)` — Sets `deletedAt` to current timestamp (Mongo: `findByIdAndUpdate`, Postgres: `UPDATE ... SET "deletedAt" = NOW()`)
+- `restore(model, id)` — Clears `deletedAt` to `null`
 
 ### Storage Strategies
 
@@ -505,6 +560,7 @@ To add a new repository or service, just drop the file in the correct directory 
 | Strategy | Status | Methods |
 |---|---|---|
 | `consoleEmail.strategy.js` | **Full** | `send` — logs to console |
+| `smtpEmail.strategy.js` | **Full** | `send` — real SMTP via nodemailer, falls back to console log if unconfigured |
 | `stubEmail.strategy.js` | **Stub** | `send` — throws (placeholder) |
 
 All strategy interfaces use `async` methods and receive config via constructor.
@@ -621,12 +677,15 @@ The `cookie-parser` npm package is used to parse `Cookie` headers into `req.cook
 | `auth.middleware.test.js` | 10 | Authenticate (5) + authorize (5) |
 | `dynamic-routes.test.js` | 7 | Dynamic `:id` (4) + query params (3) |
 | `strategies.test.js` | 20 | Mongo (7), LocalStorage (3), Postgres (6), S3Storage (4) |
+| `apiKey.test.js` | 12 | API key generation, validation, revocation, expiry |
+| `softDelete.strategy.test.js` | 4 | Soft delete on Mongo + Postgres strategies |
+| `email.strategy.test.js` | 3 | Console, SMTP fallback, and stub email strategies |
 | `rateLimiter.test.js` | 8 | Rate limiter factory |
 | `security.repository.test.js` | 10 | JWT + bcrypt |
 | `env.test.js` | 3 | Env loading |
 | `init.test.js` | 3 | Bootstrap |
 | Static analysis | 14 | Lint-style checks |
 
-Total: **100 tests** across 9 suites.
+Total: **117 tests** across 12 suites.
 
 Run: `npm test` (local) or `bash docker-cli/test.sh` (Docker).

@@ -58,6 +58,10 @@ All 9 test suites pass (100 tests total):
 | CLI scaffolding | ✅ Complete | `npm run make:controller|route|service|repository|validation|model|seeder|all` |
 | Route lister | ✅ Complete | `npm run routes` — colour-coded methods, clickable URL, middleware chain |
 | Docker CLI | ✅ Complete | Predefined `docker-cli/{dev,test,seed}.sh` with Compose health checks |
+| **API Key Management** | ✅ **New** | Generate, validate (bcrypt), revoke — with `apiKeyAuth` middleware and API endpoints |
+| **Soft Delete** | ✅ **New** | `softDelete()` / `restore()` methods on both database strategies |
+| **SMTP Email** | ✅ **New** | Nodemailer-based `SmtpEmailStrategy` — falls back to console log when unconfigured |
+| **PG Schema Sync** | ✅ **New** | `npm run sync` — reads Mongoose models and applies only additive changes to PostgreSQL (create tables / add columns) — safe for development |
 | Documentation | ✅ Complete | 7 doc files, README, advancement report |
 
 ---

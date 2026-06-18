@@ -14,6 +14,7 @@
 | [CLI Reference](cli-reference.md) | All npm scripts (`make:*`, `routes`, `seed`, `models`, `fetch`) and Docker CLI commands |
 | [Infrastructure & DevOps](infrastructure.md) | Docker multi-stage build, Docker Compose, environment config, logging system, scripts |
 | [Building Routes](building-routes.md) | Junior vs professional approach, route file contract, full stack example |
+| [API Key Tutorial](tutorials/api-keys.md) | Create, use, protect routes, check permissions, and revoke API keys |
 
 ## Quick Links
 
@@ -55,7 +56,11 @@
 - Model/table inspector CLI (`npm run models`)
 - Database query CLI (`npm run fetch -- <Model>`)
 - Driver-aware seeder system (Mongoose for Mongo, strategy methods for Postgres)
-- 100 tests across 9 suites
+- API Key management (generate, validate, revoke) with `X-API-Key` auth middleware
+- Soft delete support (`deletedAt` field, `softDelete()` / `restore()` strategy methods)
+- SMTP email via nodemailer (falls back to console when unconfigured)
+- Mongoose auto-schema sync — no migration tool needed
+- 117 tests across 12 suites
 
 ## CLI & Docker
 

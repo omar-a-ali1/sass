@@ -165,8 +165,12 @@ Missing any throws: `[CRITICAL CONFIG ERROR]: Missing environment variable [KEY]
 | `STORAGE_LOCAL_URL` | `/uploads` | Public base URL for uploaded files |
 | `S3_BUCKET` | — | AWS S3 bucket name |
 | `S3_REGION` | — | AWS S3 region |
-| `EMAIL_DRIVER` | `console` | Email strategy (`console` or `stub`) |
+| `EMAIL_DRIVER` | `console` | Email strategy (`console`, `smtp`, or `stub`) |
 | `EMAIL_FROM` | `noreply@example.com` | Default from address for emails |
+| `EMAIL_HOST` | — | SMTP host (e.g. `smtp.gmail.com`) |
+| `EMAIL_PORT` | `587` | SMTP port (587 for TLS, 465 for SSL) |
+| `EMAIL_USER` | — | SMTP username |
+| `EMAIL_PASS` | — | SMTP password |
 
 ### Environment Files
 

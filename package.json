@@ -20,7 +20,8 @@
     "fetch": "node cli/fetch.js",
     "seed": "node cli/seed.js",
     "seed:clean": "node cli/seed.js --clean",
-    "make:seeder": "node cli/make.js seeder"
+    "make:seeder": "node cli/make.js seeder",
+    "sync": "node cli/sync-db.js"
   },
   "author": "OMAR AIT ALI",
   "license": "MIT",
@@ -40,6 +41,7 @@
     "mongoose-to-swagger": "^1.5.1",
     "morgan": "^1.11.0",
     "multer": "^2.2.0",
+    "nodemailer": "^9.0.1",
     "pg": "^8.21.0",
     "serve-favicon": "^2.5.1",
     "socket.io": "^4.8.3",

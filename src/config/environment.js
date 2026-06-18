@@ -78,6 +78,14 @@ module.exports = {
     driver: process.env.EMAIL_DRIVER || 'console',
     /** Default from address */
     from: process.env.EMAIL_FROM || 'noreply@example.com',
+    /** SMTP host (e.g. smtp.gmail.com) */
+    smtpHost: process.env.EMAIL_HOST || '',
+    /** SMTP port (587 for TLS, 465 for SSL) */
+    smtpPort: parseInt(process.env.EMAIL_PORT, 10) || 587,
+    /** SMTP username */
+    smtpUser: process.env.EMAIL_USER || '',
+    /** SMTP password */
+    smtpPass: process.env.EMAIL_PASS || '',
   },
 
   storage: {

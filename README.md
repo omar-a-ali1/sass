@@ -32,6 +32,8 @@
 - **Paginated Queries** — `MongoStrategy.paginate()` and `PostgresStrategy.paginate()` with skip/limit + total count
 - **Response Envelope** — `res.respond()`, `res.paginated()`, `res.fail()` — consistent JSON shape with `traceId`
 - **File Uploads** — Multer bridge → storage strategy. Factory `upload({ field, maxSize })` returns middleware array
+- **API Key Management** — Generate, validate (bcrypt), and revoke API keys with `X-API-Key` authentication middleware
+- **Soft Delete** — `softDelete()` / `restore()` methods on both database strategies, `deletedAt` field support across drivers
 - **Seeder System** — Auto-discovers `*.seeder.js` in `src/seeders/`, runs via CLI (`npm run seed`). Works with both MongoDB and PostgreSQL
 - **CLI Scaffolding** — Laravel-style `npm run make:controller|route|service|repository|validation|model|seeder|all`
 - **Route Lister** — `npm run routes` — colour-coded methods, clickable links, middleware chain
@@ -121,7 +123,7 @@
 │   │   └── email/
 │   │       ├── consoleEmail.strategy.js   # Logs to console
 │   │       └── stubEmail.strategy.js      # Placeholder for SMTP
-│   ├── tests/                         # 100 tests across 9 suites
+│   ├── tests/                         # 117 tests across 12 suites
 │   ├── utils/                         # Logger, Joi formatting, sanitize
 │   └── validation/                    # Joi schemas (auth/, users/list.js)
 ├── docs/                              # Full documentation suite
@@ -319,7 +321,7 @@ bash docker-cli/test.sh               # Run tests
 ## Testing
 
 ```bash
-npm test                          # 100 tests, 9 suites, ~7s
+npm test                          # 117 tests, 12 suites, ~8s
 ```
 
 | Suite | Tests | Coverage |
@@ -328,6 +330,9 @@ npm test                          # 100 tests, 9 suites, ~7s
 | `auth.middleware.test.js` | 10 | Authenticate + authorize |
 | `dynamic-routes.test.js` | 7 | Path params, query validation |
 | `strategies.test.js` | 20 | Mongo, Postgres, LocalStorage, S3 |
+| `apiKey.test.js` | 12 | API key generation, validation, revocation |
+| `softDelete.strategy.test.js` | 4 | Soft delete on Mongo + Postgres strategies |
+| `email.strategy.test.js` | 3 | Console, SMTP fallback, and stub email |
 | `rateLimiter.test.js` | 8 | Rate limiter factory |
 | `security.repository.test.js` | 10 | JWT + bcrypt |
 | `env.test.js` | 3 | Env loading |

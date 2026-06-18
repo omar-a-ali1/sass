@@ -10,7 +10,8 @@
 |---|---|
 | `npm run dev` | Start dev server with `nodemon` (auto-restarts on file changes) |
 | `npm start` | Start production server (`NODE_ENV=production`) |
-| `npm test` | Run all 100 tests across 9 suites |
+| `npm test` | Run all 117 tests across 12 suites |
+| `npm run sync` | Sync PostgreSQL schema from Mongoose models — creates missing tables and columns |
 
 ---
 
@@ -101,6 +102,7 @@ Predefined shell scripts in [`docker-cli/`](../docker-cli) for common Docker Com
 | `dev-postgres.sh` | `bash docker-cli/dev-postgres.sh` | Start dev app + PostgreSQL containers |
 | `test.sh` | `bash docker-cli/test.sh` | Start test app + MongoDB containers, run all tests |
 | `seed.sh` | `bash docker-cli/seed.sh` | Run seeders inside the running dev container |
+| `sync.sh` | `bash docker-cli/sync.sh` | Sync PostgreSQL schema from Mongoose models — creates missing tables and columns |
 | `models.sh` | `bash docker-cli/models.sh` | Show models and columns from the running dev container |
 | `fetch.sh` | `bash docker-cli/fetch.sh User --limit 5` | Query records from the running dev container |
 

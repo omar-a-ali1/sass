@@ -131,6 +131,14 @@ class MongoStrategy {
   async insertMany(model, docs) {
     return this._model(model).insertMany(docs);
   }
+
+  async softDelete(model, id) {
+    return this._model(model).findByIdAndUpdate(id, { deletedAt: new Date() }, { new: true }).lean();
+  }
+
+  async restore(model, id) {
+    return this._model(model).findByIdAndUpdate(id, { deletedAt: null }, { new: true }).lean();
+  }
 }
 
 

@@ -63,6 +63,7 @@ const PostgresStrategy = require('../strategies/database/postgres.strategy');
 const LocalStorageStrategy = require('../strategies/storage/localStorage.strategy');
 const S3StorageStrategy = require('../strategies/storage/s3Storage.strategy');
 const ConsoleEmailStrategy = require('../strategies/email/consoleEmail.strategy');
+const SmtpEmailStrategy = require('../strategies/email/smtpEmail.strategy');
 const StubEmailStrategy = require('../strategies/email/stubEmail.strategy');
 
 const dbDrivers = {
@@ -79,7 +80,8 @@ container.register('storageStrategy', (storageDrivers[config.storage.driver] || 
 
 const emailDrivers = {
   console: () => new ConsoleEmailStrategy(),
-  smtp: () => new StubEmailStrategy(),
+  smtp: () => new SmtpEmailStrategy(),
+  stub: () => new StubEmailStrategy(),
 };
 container.register('emailStrategy', (emailDrivers[config.email.driver] || emailDrivers.console)());
 
