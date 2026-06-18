@@ -18,7 +18,7 @@
 
 ## 2. Test Coverage
 
-All 9 test suites pass (100 tests total):
+All 12 test suites pass (117 tests total):
 
 | Suite | Tests | Status |
 |---|---|---|
@@ -26,6 +26,9 @@ All 9 test suites pass (100 tests total):
 | `auth.middleware.test.js` | 10 | ✅ Pass |
 | `dynamic-routes.test.js` | 7 | ✅ Pass |
 | `strategies.test.js` | 20 | ✅ Pass |
+| `apiKey.test.js` | 12 | ✅ Pass |
+| `softDelete.strategy.test.js` | 4 | ✅ Pass |
+| `email.strategy.test.js` | 3 | ✅ Pass |
 | `rateLimiter.test.js` | 8 | ✅ Pass |
 | `security.repository.test.js` | 10 | ✅ Pass |
 | `env.test.js` | 3 | ✅ Pass |
@@ -62,7 +65,10 @@ All 9 test suites pass (100 tests total):
 | **Soft Delete** | ✅ **New** | `softDelete()` / `restore()` methods on both database strategies |
 | **SMTP Email** | ✅ **New** | Nodemailer-based `SmtpEmailStrategy` — falls back to console log when unconfigured |
 | **PG Schema Sync** | ✅ **New** | `npm run sync` — reads Mongoose models and applies only additive changes to PostgreSQL (create tables / add columns) — safe for development |
-| Documentation | ✅ Complete | 7 doc files, README, advancement report |
+| **Declarative Rate Limit** | ✅ **New** | Add `rateLimit` property to route definitions — no imports needed, no central config to touch. Removed `RATE_LIMIT_CONFIG` from `system.js`. |
+| **Auto `{Model}Response` Schemas** | ✅ **New** | Each Mongoose model auto-generates a `{Name}Response` Swagger schema with `password`, `__v`, `hashedKey`, `resetToken`, `refreshToken` stripped. Reference `#/components/schemas/UserResponse` in route docs. |
+| **Port default 5000** | ✅ Fixed | All docs and config default to port 5000 instead of 3000 |
+| Documentation | ✅ Complete | 8 doc files, README, tutorials |
 
 ---
 
@@ -311,5 +317,5 @@ All scripts manage dependency health checks (PostgreSQL + MongoDB must be health
 cp .env.development.example .env.development
 npm install
 npm run dev
-# App starts on PORT (default 3000), health at /health
+# App starts on PORT (default 5000), health at /health
 ```

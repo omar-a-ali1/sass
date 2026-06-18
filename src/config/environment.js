@@ -34,7 +34,7 @@ module.exports = {
   /** API route prefix — folder under routes/ to scan and mount point */
   routePrefix: process.env.ROUTE_PREFIX || '',
   /** HTTP server port */
-  port: parseInt(process.env.PORT, 10) || 3000,
+  port: parseInt(process.env.PORT, 10) || 5000,
 
   /** Maximum JSON request body size (express.json limit) */
   bodyLimit: process.env.BODY_LIMIT || '1mb',
@@ -86,6 +86,11 @@ module.exports = {
     smtpUser: process.env.EMAIL_USER || '',
     /** SMTP password */
     smtpPass: process.env.EMAIL_PASS || '',
+  },
+
+  apiKey: {
+    /** Prefix for generated API keys (e.g. 'sass' produces 'sass_a1b2...') */
+    prefix: process.env.API_KEY_PREFIX || 'sass',
   },
 
   storage: {

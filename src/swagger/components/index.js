@@ -50,10 +50,26 @@ function loadValidationSchemas(dir, baseDir = dir) {
   return schemas;
 }
 
+/** Fields to strip from auto-generated response schemas */
+const SENSITIVE_FIELDS = new Set(['password', '__v', 'hashedKey', 'resetToken', 'refreshToken']);
+
 /** Auto-generate OpenAPI schemas from loaded Mongoose models */
 const modelSchemas = {};
 for (const [name, mod] of Object.entries(models)) {
-  modelSchemas[name] = m2s(mod);
+  const raw = m2s(mod);
+  modelSchemas[name] = raw;
+
+  // Generate a sanitized {Name}Response variant with sensitive fields removed
+  const cleaned = JSON.parse(JSON.stringify(raw));
+  if (cleaned.properties) {
+    for (const field of SENSITIVE_FIELDS) {
+      delete cleaned.properties[field];
+    }
+  }
+  if (Array.isArray(cleaned.required)) {
+    cleaned.required = cleaned.required.filter(f => !SENSITIVE_FIELDS.has(f));
+  }
+  modelSchemas[`${name}Response`] = cleaned;
 }
 
 /** Auto-scan validation/ directory for Joi schemas */

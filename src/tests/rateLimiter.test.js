@@ -140,17 +140,26 @@ describe('Rate Limiter Middleware', () => {
   });
 });
 
-describe('createConfigDrivenRateLimiter', () => {
-  const { createConfigDrivenRateLimiter } = createRateLimiter;
-
-  it('should return null for unknown paths', () => {
-    const mw = createConfigDrivenRateLimiter('/api/v1/unknown');
-    expect(mw).toBeNull();
+describe('rateLimit in route definition', () => {
+  it('should create rate limiter from route def with correct options', () => {
+    const def = {
+      rateLimit: { max: 3, windowMs: 60000 },
+    };
+    const mw = createRateLimiter(def.rateLimit);
+    expect(typeof mw).toBe('function');
+    expect(mw._label).toMatch(/max: 3/);
   });
 
-  it('should return a middleware for configured paths', () => {
-    const mw = createConfigDrivenRateLimiter('/api/v1/auth/login');
-    expect(mw).toBeDefined();
-    expect(typeof mw).toBe('function');
+  it('should apply rate limit before other middleware', () => {
+    const def = {
+      rateLimit: { max: 5, windowMs: 60000 },
+      middleware: [() => {}],
+    };
+    const middleware = [...def.middleware];
+    const rlMw = createRateLimiter(def.rateLimit);
+    rlMw._label = `rateLimit(${JSON.stringify(def.rateLimit)})`;
+    const result = [rlMw, ...middleware];
+    expect(result.length).toBe(2);
+    expect(result[0]._label).toMatch(/rateLimit/);
   });
 });

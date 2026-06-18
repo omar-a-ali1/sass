@@ -56,6 +56,9 @@ function registerName(base, type) {
 
 const container = new DependencyContainer();
 
+// Config is available as a dependency for services/repositories
+container.register('config', config);
+
 // ── 1. Strategies (manual — depend on config) ──
 
 const MongoStrategy = require('../strategies/database/mongo.strategy');

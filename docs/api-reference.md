@@ -79,7 +79,7 @@
 | Export | Description |
 |---|---|
 | `models` | Array of loaded Mongoose model names |
-| `modelSchemas` | Object of OpenAPI schemas auto-generated from Mongoose models via `mongoose-to-swagger` |
+| `modelSchemas` | Object of OpenAPI schemas auto-generated from Mongoose models via `mongoose-to-swagger`. Each model also gets a `{Name}Response` variant with sensitive fields (`password`, `__v`, `hashedKey`, `resetToken`, `refreshToken`) stripped automatically. |
 
 Scans `src/models/` for `.js` files, `require()`s each one. Each model's `mongoose.model()` call registers it globally.
 
@@ -153,7 +153,7 @@ Converts `:param` to `{param}` in OpenAPI path keys (e.g. `/users/:id` → `/use
 |---|---|---|---|
 | `env` | `string` | `'development'` | Current NODE_ENV |
 | `routePrefix` | `string` | `''` | Swagger server URL prefix (no longer used for route loading) |
-| `port` | `number` | `3000` | HTTP server port |
+| `port` | `number` | `5000` | HTTP server port |
 | `bodyLimit` | `string` | `'1mb'` | Max JSON body size |
 | `database.uri` | `string` | `'mongodb://localhost:27017/myapp_dev'` | MongoDB URI |
 | `bcrypt.salt` | `number` | parsed from `BCRPT_SALT_SIZE` | Bcrypt salt rounds |
@@ -173,7 +173,7 @@ Converts `:param` to `{param}` in OpenAPI path keys (e.g. `/users/:id` → `/use
 #### `MIDDLEWARE_PIPELINE`
 Ordered array of middleware keys applied globally:
 ```js
-['favicon', 'helmet', 'cors', 'cookieParser', 'json', 'urlencoded', 'rateLimiter', 'perfMonitor', 'tracer', 'injectServices', 'responder']
+['favicon', 'helmet', 'cors', 'cookieParser', 'json', 'urlencoded', 'rateLimiter', 'perfMonitor', 'tracer', 'injectServices', 'responder', 'activityLog']
 ```
 
 #### `SWAGGER_CONFIG`
@@ -316,9 +316,23 @@ Assigns `req.id` from `X-Request-ID` header or random UUID segment. Sets `X-Requ
 
 `authorize(allowedRoles)`: Returns middleware that checks `req.user.role` against allowed list. Passes `ForbiddenError` if not authorized. Usage: `authorize('admin')` or `authorize(['admin', 'moderator'])`.
 
-### `src/middlewares/rateLimiter.js` — Per-Route Rate Limiter Factory
+### `src/middlewares/rateLimiter.js` — Rate Limiter Factory
 
 `createRateLimiter(options)`: Factory creating Express rate-limit middleware. Options: `{ windowMs, max, message }`. Default: 1-minute window, 10 max.
+
+**Declarative usage in routes** — add a `rateLimit` property to your route definition instead of importing the factory manually:
+
+```js
+module.exports = {
+  method: 'post',
+  path: '/login',
+  rateLimit: { max: 5, windowMs: 60000 },
+  middleware: [validate(loginSchema)],
+  handler: login,
+};
+```
+
+The framework auto-prepends the rate limiter middleware. The global `RATE_LIMIT_CONFIG` in `system.js` was removed in favour of this route-level approach.
 
 ### `src/middlewares/responder.js` — Response Envelope
 
@@ -575,7 +589,7 @@ All strategy interfaces use `async` methods and receive config via constructor.
 |---|---|
 | `securitySchemes` | `bearerAuth` (HTTP Bearer), `cookieAuth` (API key in cookie `token`) |
 | `responses` | `ValidationError`, `ConflictError`, `UnauthorizedError`, `ForbiddenError`, `NotFoundError`, `InternalServerError`, `ServiceUnavailableError` |
-| `schemas` | Auto-generated from Joi via `joi-to-swagger`, auto-generated from Mongoose models via `mongoose-to-swagger`, plus manual `UserResponse` |
+| `schemas` | Auto-generated from Joi via `joi-to-swagger`, auto-generated from Mongoose models via `mongoose-to-swagger`, plus auto-generated `{Model}Response` variants with sensitive fields (`password`, `__v`, `hashedKey`, `resetToken`, `refreshToken`) stripped |
 
 ### Auto-Generated from Route Files
 

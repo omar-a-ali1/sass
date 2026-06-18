@@ -147,7 +147,7 @@ Missing any throws: `[CRITICAL CONFIG ERROR]: Missing environment variable [KEY]
 |---|---|---|
 | `NODE_ENV` | `development` | Runtime environment |
 | — | — | URL is determined by directory structure under `routes/` (no longer a config option) |
-| `PORT` | `3000` | HTTP server port |
+| `PORT` | `5000` | HTTP server port |
 | `BODY_LIMIT` | `1mb` | Maximum JSON request body size |
 | `MONGO_URI` | `mongodb://localhost:27017/myapp_dev` | MongoDB connection string |
 | `POSTGRES_URI` | `postgres://sass:sass@localhost:5432/sass_dev` | PostgreSQL connection string |
@@ -171,6 +171,7 @@ Missing any throws: `[CRITICAL CONFIG ERROR]: Missing environment variable [KEY]
 | `EMAIL_PORT` | `587` | SMTP port (587 for TLS, 465 for SSL) |
 | `EMAIL_USER` | — | SMTP username |
 | `EMAIL_PASS` | — | SMTP password |
+| `API_KEY_PREFIX` | `sass` | Prefix for generated API keys (e.g. `myapp` produces keys like `myapp_a1b2...`) |
 
 ### Environment Files
 

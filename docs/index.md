@@ -14,6 +14,7 @@
 | [CLI Reference](cli-reference.md) | All npm scripts (`make:*`, `routes`, `seed`, `models`, `fetch`) and Docker CLI commands |
 | [Infrastructure & DevOps](infrastructure.md) | Docker multi-stage build, Docker Compose, environment config, logging system, scripts |
 | [Building Routes](building-routes.md) | Junior vs professional approach, route file contract, full stack example |
+| [Getting Started](tutorials/getting-started.md) | Clone → setup → structure → libraries → features → build routes (junior vs senior) → auto-discovery → configuration |
 | [API Key Tutorial](tutorials/api-keys.md) | Create, use, protect routes, check permissions, and revoke API keys |
 
 ## Quick Links
@@ -36,6 +37,7 @@
 - **API Routes**: [`src/routes/api/v1/auth/`](../src/routes/api/v1/auth/)
 - **Error Base**: [`src/errors/appErrors.js`](../src/errors/appErrors.js)
 - **Logger**: [`src/utils/logger.js`](../src/utils/logger.js)
+- **Getting Started Tutorial**: [`docs/tutorials/getting-started.md`](tutorials/getting-started.md)
 
 ## What's Implemented
 

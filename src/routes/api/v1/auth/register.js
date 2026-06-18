@@ -5,20 +5,14 @@
  */
 
 const validateMiddleware = require('../../../../middlewares/validation');
-const createRateLimiter = require('../../../../middlewares/rateLimiter');
 const registerSchema = require('../../../../validation/auth/register');
 const { register } = require('../../../../controllers/auth.controller');
-
-const registerLimiter = createRateLimiter({
-  windowMs: 60 * 1000,
-  max: 10,
-  message: 'Too many registration attempts, please try again later.',
-});
 
 module.exports = {
   method: 'post',
   path: '/register',
-  middleware: [registerLimiter, validateMiddleware(registerSchema)],
+  rateLimit: { max: 10, windowMs: 60 * 1000, message: 'Too many registration attempts, please try again later.' },
+  middleware: [validateMiddleware(registerSchema)],
   handler: register,
   docs: {
     tags: ['Authentication'],

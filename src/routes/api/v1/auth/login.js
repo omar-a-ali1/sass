@@ -5,20 +5,14 @@
  */
 
 const validateMiddleware = require('../../../../middlewares/validation');
-const createRateLimiter = require('../../../../middlewares/rateLimiter');
 const loginSchema = require('../../../../validation/auth/login');
 const { login } = require('../../../../controllers/auth.controller');
-
-const loginLimiter = createRateLimiter({
-  windowMs: 60 * 1000,
-  max: 5,
-  message: 'Too many login attempts, please try again later.',
-});
 
 module.exports = {
   method: 'post',
   path: '/login',
-  middleware: [loginLimiter, validateMiddleware(loginSchema)],
+  rateLimit: { max: 5, windowMs: 60 * 1000, message: 'Too many login attempts, please try again later.' },
+  middleware: [validateMiddleware(loginSchema)],
   handler: login,
   docs: {
     tags: ['Authentication'],

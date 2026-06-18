@@ -1,5 +1,4 @@
 const rateLimit = require('express-rate-limit');
-const { RATE_LIMIT_CONFIG } = require('../config/system');
 
 const createRateLimiter = (options = {}) => {
   const {
@@ -23,11 +22,4 @@ const createRateLimiter = (options = {}) => {
   return mw;
 };
 
-const createConfigDrivenRateLimiter = (routePath, options = {}) => {
-  const config = RATE_LIMIT_CONFIG[routePath];
-  if (!config) return null;
-  return createRateLimiter({ ...config, ...options });
-};
-
 module.exports = createRateLimiter;
-module.exports.createConfigDrivenRateLimiter = createConfigDrivenRateLimiter;

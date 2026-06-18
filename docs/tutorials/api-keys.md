@@ -8,7 +8,7 @@ Learn how to create, use, and protect routes with API keys in this framework.
 
 | Concept | Implementation |
 |---|---|
-| Key format | `sass_` + 64 hex characters (256-bit random) |
+| Key format | `{prefix}_` + 64 hex characters (256-bit random) — prefix defaults to `sass`, configurable via `API_KEY_PREFIX` env var |
 | Storage | Only a **bcrypt hash** is persisted — raw key is never stored |
 | Lookup | First 12 characters are extracted as a prefix for fast DB lookup |
 | Validation | Bcrypt compare against the stored hash |
@@ -192,13 +192,27 @@ curl -s -X DELETE "http://localhost:5000/api/v1/api-keys/$KEY_ID" \
 
 ---
 
+## Configuration
+
+Set a custom prefix via `API_KEY_PREFIX` in your `.env`:
+
+```bash
+# .env.development
+API_KEY_PREFIX=myapp
+```
+
+Keys will be generated as `myapp_a1b2c3d4...` instead of the default `sass_a1b2c3d4...`.
+
 ## API key format reference
 
 ```
 sass_a1b2c3d4e5f678901234567890123456789012345678901234567890abcdef
 ^^^^ ^^^^^^^^^^^^ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
  |        |                            |
- prefix  (12 chars)               256-bit random (64 hex chars)
- |
-framework prefix
+api key                              256-bit random (64 hex chars)
+prefix   lookup prefix (12 chars)
+(env var)
+
+API_KEY_PREFIX defaults to "sass".
+The lookup prefix is always the first 12 characters of the full key.
 ```

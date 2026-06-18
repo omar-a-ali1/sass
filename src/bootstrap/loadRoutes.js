@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const express = require('express');
+const createRateLimiter = require('../middlewares/rateLimiter');
 
 const routesDir = path.join(__dirname, '..', 'routes');
 
@@ -19,7 +20,13 @@ function collectRoutes(dir = routesDir, basePath = '') {
       if (!def || !def.method || !def.handler) continue;
       const p = def.path || `/${path.basename(entry.name, '.js')}`;
 
-      const middleware = Array.isArray(def.middleware) ? def.middleware : [];
+      let middleware = Array.isArray(def.middleware) ? [...def.middleware] : [];
+
+      if (def.rateLimit) {
+        const rlMw = createRateLimiter(def.rateLimit);
+        rlMw._label = `rateLimit(${JSON.stringify(def.rateLimit)})`;
+        middleware = [rlMw, ...middleware];
+      }
 
       const validationSchema = middleware.find(
         (mw) => typeof mw === 'function' && mw._validationSchema
@@ -64,7 +71,14 @@ function buildRouter(dir = routesDir) {
 
       if (def.method && def.handler) {
         const p = def.path || `/${path.basename(entry.name, '.js')}`;
-        const middleware = Array.isArray(def.middleware) ? def.middleware : [];
+        let middleware = Array.isArray(def.middleware) ? [...def.middleware] : [];
+
+        if (def.rateLimit) {
+          const rlMw = createRateLimiter(def.rateLimit);
+          rlMw._label = `rateLimit(${JSON.stringify(def.rateLimit)})`;
+          middleware = [rlMw, ...middleware];
+        }
+
         if (typeof router[def.method.toLowerCase()] === 'function') {
           router[def.method.toLowerCase()](p, ...middleware, def.handler);
         }

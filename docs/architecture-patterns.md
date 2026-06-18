@@ -114,8 +114,8 @@ The old approach hardcoded middleware order in `app.js`. Now the pipeline is a c
 ```js
 MIDDLEWARE_PIPELINE: [
   'favicon', 'helmet', 'cors', 'cookieParser',
-  'json', 'rateLimiter', 'perfMonitor',
-  'tracer', 'injectServices',
+  'json', 'urlencoded', 'rateLimiter', 'perfMonitor',
+  'tracer', 'injectServices', 'responder', 'activityLog',
 ]
 ```
 
@@ -262,20 +262,25 @@ Error
    c. cors → CORS
    d. cookieParser → req.cookies
    e. json({ limit }) → parses body
-   f. rateLimiter → global rate limit
-   g. perfMonitor → collects metrics
-   h. tracer → req.id + Morgan/Winston logging
-   i. injectServices → attaches IoC container
+   f. urlencoded → form body parsing
+   g. rateLimiter → global rate limit
+   h. perfMonitor → collects metrics
+   i. tracer → req.id + Morgan/Winston logging
+   j. injectServices → attaches IoC container
+   k. responder → res.respond / res.paginated / res.fail
+   l. activityLog → auto-log every request
 4. Route matching:
    a. /health → health controller
    b. /api-docs → Swagger UI
    c. /api/v1/* → auto-loaded Router
    d. fallback → 404
 5. Per-route middleware (if configured):
-   a. rateLimiter (optional, per-endpoint)
+   a. rateLimit (declarative, from route def) → per-endpoint rate limit
    b. authenticate → verifies JWT → req.user
    c. authorize → checks role
-   d. validate / validateQuery → Joi validation → req.validatedBody / req.validatedQuery
+   d. authorizeApiKey → checks API key permissions
+   e. apiKeyAuth → validates X-API-Key header
+   f. validate / validateQuery → Joi validation → req.validatedBody / req.validatedQuery
 6. Controller:
    - Gets service via req.getService()
    - Calls service method with validated data

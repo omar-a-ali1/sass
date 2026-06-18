@@ -12,9 +12,10 @@ const NotFoundError = require('../errors/NotFoundError');
 
 class ApiKeyService
 {
-  constructor({ apiKeyRepository, securityService }) {
+  constructor({ apiKeyRepository, securityService, config }) {
     this.apiKeyRepository = apiKeyRepository;
     this.securityService = securityService;
+    this.keyPrefix = (config && config.apiKey && config.apiKey.prefix) || 'sass';
   }
 
   /**
@@ -30,7 +31,7 @@ class ApiKeyService
    * @returns {Promise<{ apiKey: Object, rawKey: string }>}
    */
   async generateKey(userId, name, permissions = []) {
-    const raw = `sass_${crypto.randomBytes(32).toString('hex')}`;
+    const raw = `${this.keyPrefix}_${crypto.randomBytes(32).toString('hex')}`;
     const prefix = raw.substring(0, 12);
     const hashedKey = await this.securityService.hashPassword(raw);
 

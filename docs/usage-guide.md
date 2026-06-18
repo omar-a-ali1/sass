@@ -351,15 +351,19 @@ container.register('userService', userService);
 
 ## 11. Applying Per-Route Rate Limiting
 
-Use the `createRateLimiter` factory in your route file:
+Add a `rateLimit` property to your route definition — the framework auto-creates the middleware:
 
 ```js
-const createRateLimiter = require('../../../middlewares/rateLimiter');
-const strictLimiter = createRateLimiter({ windowMs: 60 * 1000, max: 5 });
-
-// In route definition:
-middleware: [strictLimiter, validate(loginSchema)],
+module.exports = {
+  method: 'post',
+  path: '/login',
+  rateLimit: { max: 5, windowMs: 60 * 1000, message: 'Too many attempts.' },
+  middleware: [validate(loginSchema)],
+  handler: login,
+};
 ```
+
+No imports needed — the rate limiter is prepended to your middleware chain automatically.
 
 Available options:
 
@@ -520,6 +524,13 @@ module.exports = {
 - Joi query schema on middleware `_queryValidationSchema` → generates `parameters`
 - `authenticate` middleware → adds `security`
 - `:id` in path → adds path `parameters`
+- `rateLimit` on route def → added to middleware description
+
+**Auto-generated response schemas:** Every Mongoose model produces a `{Name}Response` OpenAPI schema with sensitive fields (`password`, `__v`, `hashedKey`, `resetToken`, `refreshToken`) stripped. Reference it in your route docs:
+
+```js
+data: { $ref: '#/components/schemas/UserResponse' }
+```
 
 ### Auto-added response codes
 
@@ -678,7 +689,7 @@ Files are auto-discovered by `src/bootstrap/loadSeeders.js` — no manual regist
 | Variable | Default | Description |
 |---|---|---|---|
 | `NODE_ENV` | `development` | Runtime environment |
-| `PORT` | `3000` | HTTP server port |
+| `PORT` | `5000` | HTTP server port |
 | `BODY_LIMIT` | `1mb` | Max JSON request body size |
 | `MONGO_URI` | `mongodb://localhost:27017/myapp_dev` | MongoDB connection string |
 | `BCRPT_SALT_SIZE` | `12` | Bcrypt salt rounds |
