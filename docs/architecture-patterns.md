@@ -20,9 +20,10 @@
 ├─────────────────────────────────────────────────────────────┤
 │  ┌──────────────────────────────────────────────────────┐   │
 │  │  MIDDLEWARE_PIPELINE (ordered by config)              │   │
-│  │  favicon → helmet → cors → cookieParser              │   │
-│  │  → json(limit) → rateLimiter → perfMonitor           │   │
-│  │  → tracer → injectServices → ROUTES → fallback        │   │
+  │  │  favicon → helmet → cors → cookieParser              │   │
+  │  │  → json(limit) → urlencoded → csrf → rateLimiter     │   │
+  │  │  → perfMonitor → tracer → injectServices → responder  │   │
+  │  │  → activityLog → ROUTES → fallback                    │   │
 │  │  → errorHandler                                       │   │
 │  └──────────────────────────────────────────────────────┘   │
 └──────────────────────┬─────────────────────────────────────┘
@@ -205,7 +206,8 @@ Pluggable backends for infrastructure concerns. Each domain defines an interface
 |---|---|---|
 | Database | `mongo.strategy.js` | `postgres.strategy.js` (full PG with lazy `pg.Pool`) |
 | Storage | `localStorage.strategy.js` | `s3Storage.strategy.js` (full S3 with lazy `@aws-sdk/client-s3`) |
-| Email | `consoleEmail.strategy.js` | `stubEmail.strategy.js` (placeholder) |
+| Email | `consoleEmail.strategy.js` | `smtpEmail.strategy.js` (real SMTP), `stubEmail.strategy.js` (placeholder) |
+| Cache | `memoryCache.strategy.js` | `fileCache.strategy.js` (JSON files), `redisCache.strategy.js` (stub) |
 
 ### MongoStrategy
 Full Mongoose wrapper: `create`, `findById`, `findOne`, `find`, `update`, `delete`, `count`, `paginate`, `insertMany`, `softDelete`, `restore`, `aggregate`, `join`, `withTransaction`. Resolves models dynamically via `mongoose.model()`.

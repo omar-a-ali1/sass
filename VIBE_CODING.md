@@ -95,6 +95,31 @@ await db.withTransaction(async (trx) => {
 });
 ```
 
+### CSRF protection
+
+CSRF is auto-enabled when `PROJECT_TYPE=cookies` or `PROJECT_TYPE=both`. The middleware uses the double-submit cookie pattern — no extra config needed. The frontend must read the `csrf-token` cookie and send it as the `X-CSRF-Token` header on state-changing requests.
+
+### Response caching
+
+Use the `cacheMiddleware()` factory to cache GET responses per-route:
+
+```js
+const cache = require('../../../middlewares/cache');
+
+module.exports = {
+  method: 'get',
+  path: '/expensive-report',
+  middleware: [cache({ ttl: 60 })],  // cache for 60 seconds
+  handler: getReport,
+};
+```
+
+Driver is config-driven via `CACHE_DRIVER` env var.
+
+### Auto-sync on model change
+
+Run `npm run cb-sync` alongside `npm run dev` — it watches `src/models/` and automatically syncs Postgres schema whenever a model file changes.
+
 ### Per-route rate limiting
 
 Add a `rateLimit` property to your route definition — the framework auto-creates and prepends the middleware:

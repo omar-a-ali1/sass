@@ -50,11 +50,12 @@
 **Purpose**: Central orchestrator that wires the entire framework:
 
 1. Auto-loads Mongoose models via `loadModels.js`
-2. Initializes the IoC container (strategies → repos → services)
-3. Auto-builds the API router via `loadRoutes.js`
-4. Auto-generates Swagger doc via `loadSwagger.js`
-5. Creates Express app with **configurable middleware pipeline**
-6. Mounts routes and error handler
+2. Registers strategies via `loadStrategies.js` (DB, storage, email, cache)
+3. Initializes the IoC container via `loadContainer.js` (auto-discovers repos + services)
+4. Auto-builds the API router via `loadRoutes.js`
+5. Auto-generates Swagger doc via `loadSwagger.js`
+6. Creates Express app with **configurable middleware pipeline**
+7. Mounts routes and error handler
 
 **Middleware pipeline**: Iterates `MIDDLEWARE_PIPELINE` array from config, looks up each key in `middlewareMap`, calls `app.use()` in order.
 
@@ -66,11 +67,12 @@
 | `cookieParser` | `cookie-parser()` | Parse `Cookie` header → `req.cookies` |
 | `json` | `express.json({ limit })` | Body parsing with configurable size limit |
 | `urlencoded` | `express.urlencoded({ extended, limit })` | Form body parsing |
-| `responder` | `middlewares/responder` | Attaches `res.respond()`, `res.paginated()`, `res.fail()` |
+| `csrf` | `middlewares/csrf` | CSRF protection (active when `PROJECT_TYPE` is `cookies`/`both`) |
 | `rateLimiter` | `express-rate-limit` | Global rate limiter |
 | `perfMonitor` | `middlewares/perfMonitor` | Response time tracking, metrics collection |
 | `tracer` | `middlewares/tracer` | Request ID + Morgan HTTP logging |
 | `injectServices` | `middlewares/injectServices` | Attaches IoC container to `req` |
+| `responder` | `middlewares/responder` | Attaches `res.respond()`, `res.paginated()`, `res.fail()` |
 
 **Route mounts**: `/` (welcome), `/api-docs` (Swagger UI), `/health/**` (auto-loaded), `/api/*` (auto-loaded), fallback (404), errorHandler.
 
@@ -164,9 +166,14 @@ Converts `:param` to `{param}` in OpenAPI path keys (e.g. `/users/:id` → `/use
 | `jwt.resetExpiresIn` | `string` | `'15m'` | Reset-password token expiry |
 | `cors.origin` | `string` | `'*'` | Allowed CORS origin |
 | `rateLimit.max` | `number` | `null` | Max requests per window |
+| `projectType` | `string` | `'jwt'` | Auth mode: `jwt`, `cookies`, or `both` |
 | `email.driver` | `string` | `'console'` | Email strategy |
 | `storage.driver` | `string` | `'local'` | Storage strategy |
 | `storage.uploadDir` | `string` | `'storage/uploads'` | Local upload path |
+| `cache.driver` | `string` | `'memory'` | Cache strategy: `memory`, `file`, or `redis` |
+| `cache.ttl` | `number` | `300` | Default cache TTL in seconds |
+| `cache.redisUrl` | `string` | `''` | Redis connection string (used when driver is `redis`) |
+| `cache.redisPrefix` | `string` | `'sass:cache:'` | Redis key prefix |
 
 ### `src/config/system.js` — System Constants
 
@@ -369,6 +376,30 @@ upload({ field, maxCount, maxSize, allowedMimes, prefix })
 | `createMetrics()` | Initializes an empty metrics store. |
 
 **Metrics available at** `GET /health/metrics` when `PERF_MONITOR_CONFIG.metricsEndpoint` is `true`. Returns `{ uptime, requests: { total, byMethod, byRoute, byStatus, avgResponseMs }, histogram, system: { memory, loadAvg, cpuUser, cpuSystem } }`.
+
+### `src/middlewares/csrf.js` — CSRF Protection
+
+Double-submit cookie CSRF protection. Active only when `PROJECT_TYPE` is `cookies` or `both` (skipped entirely for `jwt`-only projects).
+
+| Method | Behaviour |
+|---|---|
+| GET / HEAD / OPTIONS | Generates a random token, sets it as a non-httpOnly cookie (`csrf-token`) |
+| POST / PUT / DELETE / PATCH | Validates `X-CSRF-Token` header against the cookie value. Returns `403` on mismatch |
+
+SameSite is set to `strict` for cookie-only projects, `lax` for mixed-mode.
+
+### `src/middlewares/cache.js` — Response Caching
+
+Factory `cacheMiddleware(options)` that intercepts GET responses and caches them via the registered `cacheStrategy`:
+
+```js
+const cache = require('../middlewares/cache');
+
+// In a route definition:
+middleware: [cache({ ttl: 60 })]
+```
+
+On subsequent identical requests, the cached response is returned directly — the controller and downstream layers are skipped entirely. Works with `memory`, `file`, and `redis` cache drivers.
 
 ---
 
@@ -681,6 +712,16 @@ await db.withTransaction(async (trx) => {
 | `smtpEmail.strategy.js` | **Full** | `send` — real SMTP via nodemailer, falls back to console log if unconfigured |
 | `stubEmail.strategy.js` | **Stub** | `send` — throws (placeholder) |
 
+### Cache Strategies
+
+| Strategy | Status | Methods |
+|---|---|---|
+| `memoryCache.strategy.js` | **Full** | `get`, `set`, `del`, `flush` — in-memory Map with TTL eviction |
+| `fileCache.strategy.js` | **Full** | `get`, `set`, `del`, `flush` — JSON files in `storage/cache/` |
+| `redisCache.strategy.js` | **Stub** | `get`, `set`, `del`, `flush` — throws on use (placeholder for `ioredis`) |
+
+Driver selected via `CACHE_DRIVER` env var (`memory`, `file`, or `redis`). Register a new driver by implementing the same interface and adding it to `src/bootstrap/loadStrategies.js`.
+
 All strategy interfaces use `async` methods and receive config via constructor.
 
 ---
@@ -737,6 +778,16 @@ Outputs a colour-coded table with model name, table name, and per-column details
 ### `cli/seed.js` — Seeder Runner
 
 Driver-aware seeder CLI. Detects `DB_DRIVER=postgres`, creates a `PostgresStrategy` with a `pg.Pool`, and passes the `strategy` option to `loadSeeders.run()`.
+
+### `cli/cb-sync.js` — Auto-Sync Watcher
+
+Watches `src/models/` for file changes and automatically runs `sync-db` to keep the Postgres schema in sync with model definitions. Uses `fs.watch` with 1-second debounce to avoid rapid re-syncs.
+
+```bash
+npm run cb-sync
+```
+
+Designed for development — run alongside `npm run dev` to automatically apply model changes to Postgres without manual `npm run sync` calls.
 
 ---
 

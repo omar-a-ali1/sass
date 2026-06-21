@@ -35,6 +35,9 @@
 - **Paginated Queries** — `paginate()` with skip/limit + total count, unified across both DB strategies
 - **Soft Delete** — `softDelete()` / `restore()` on both database strategies, `deletedAt` field support
 - **Response Envelope** — `res.respond()`, `res.paginated()`, `res.fail()` — consistent JSON shape with `traceId`
+- **CSRF Protection** — Double-submit cookie pattern, auto-enabled when `PROJECT_TYPE=cookies` or `both`
+- **Response Caching** — Pluggable cache strategies (`memory`, `file`, `redis` stub) with per-route middleware
+- **Auto-Sync Watcher** — `npm run cb-sync` watches `src/models/` and syncs Postgres schema automatically
 - **File Uploads** — Multer bridge → storage strategy. Factory `upload({ field, maxSize })` returns middleware array
 - **Seeder System** — Auto-discovers `*.seeder.js` in `src/seeders/`, driver-aware (Mongo + Postgres), `--clean` flag
 - **CLI Scaffolding** — Laravel-style `npm run make:*` commands (controller, route, service, repository, validation, model, seeder, all)
@@ -61,11 +64,12 @@
 ├── src/
 │   ├── app.js                         # Express app export
 │   ├── bootstrap/
-│   │   ├── index.js                   # Express assembly from pipeline config
+│   │   ├── index.js                   # Express app assembly
 │   │   ├── container.js               # DependencyContainer class
-│   │   ├── loadContainer.js           # IoC wiring (strategies → repos → services)
-│   │   ├── loadModels.js              # Auto-scans models/ → Mongoose + OpenAPI schemas
-│   │   ├── loadRoutes.js              # Recursively scans routes/ → Express Router
+│   │   ├── loadModels.js              # Auto-scans models/
+│   │   ├── loadStrategies.js          # Registers all strategies (DB, storage, email, cache)
+│   │   ├── loadContainer.js           # IoC wiring: loadStrategies + auto-discover repos/services
+│   │   ├── loadRoutes.js              # Recursively scans routes/ → Router
 │   │   ├── loadSwagger.js             # OpenAPI 3.0 generator
 │   │   └── loadSeeders.js             # Driver-aware seeder runner
 │   ├── config/
@@ -89,9 +93,13 @@
 │   │   │   │   ├── consoleEmail.strategy.js
 │   │   │   │   ├── smtpEmail.strategy.js
 │   │   │   │   └── stubEmail.strategy.js
-│   │   │   └── storage/
-│   │   │       ├── localStorage.strategy.js
-│   │   │       └── s3Storage.strategy.js
+│   │   │   ├── storage/
+│   │   │   │   ├── localStorage.strategy.js
+│   │   │   │   └── s3Storage.strategy.js
+│   │   │   └── cache/
+│   │   │       ├── memoryCache.strategy.js  # In-memory with TTL
+│   │   │       ├── fileCache.strategy.js    # JSON files
+│   │   │       └── redisCache.strategy.js   # Stub (requires ioredis)
 │   │   ├── swagger/
 │   │   │   └── components/
 │   │   │       ├── index.js            # Security schemes, shared responses, schemas
@@ -207,6 +215,7 @@ npm run fetch -- User --id 1          # By ID
 # Schema sync (Postgres)
 npm run sync                          # Sync all models to Postgres
 npm run sync User Store               # Sync specific models
+npm run cb-sync                       # Auto-sync on model changes (run with dev)
 
 # Routing & Dev
 npm run routes                        # Colour-coded route list
@@ -320,7 +329,7 @@ Switch drivers by changing `DB_DRIVER`, `STORAGE_DRIVER`, or `EMAIL_DRIVER` in `
 
 ```
 favicon → helmet → cors → cookieParser → json(limit) → urlencoded
-  → rateLimiter → perfMonitor → tracer → injectServices → responder
+  → csrf → rateLimiter → perfMonitor → tracer → injectServices → responder
     → activityLog → routes → fallback → errorHandler
 ```
 
@@ -361,17 +370,18 @@ bash src/tools/docker-cli/test.sh             # Run tests
 |---|---|---|
 | `PORT` | `5000` | HTTP port |
 | `BODY_LIMIT` | `1mb` | Max request body |
+| `PROJECT_TYPE` | `jwt` | `jwt`, `cookies`, or `both` |
 | `DB_DRIVER` | `mongo` | `mongo` or `postgres` |
 | `MONGO_URI` | `mongodb://localhost:27017/myapp_dev` | MongoDB URI |
 | `POSTGRES_URI` | — | PostgreSQL connection string |
 | `JWT_SECRET` | — | Access token signing key |
 | `JWT_REFRESH_SECRET` | — | Refresh token signing key |
-| `JWT_EXPIRES_IN` | `15m` | Access token TTL |
-| `JWT_REFRESH_EXPIRES_IN` | `7d` | Refresh token TTL |
 | `CORS_ORIGIN` | `*` | Allowed origins |
 | `RATE_LIMIT_MAX` | `100` | Requests per 15min window |
 | `STORAGE_DRIVER` | `local` | `local` or `s3` |
 | `EMAIL_DRIVER` | `console` | `console`, `smtp`, or `stub` |
+| `CACHE_DRIVER` | `memory` | `memory`, `file`, or `redis` |
+| `CACHE_TTL` | `300` | Default cache TTL in seconds |
 
 ---
 

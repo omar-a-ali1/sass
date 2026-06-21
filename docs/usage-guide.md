@@ -17,16 +17,17 @@ A practical guide to adding new features, extending the framework, and following
 9. [Creating a New Model](#9-creating-a-new-model)
 10. [Registering in the Container](#10-registering-in-the-container)
 11. [Applying Per-Route Rate Limiting](#11-applying-per-route-rate-limiting)
-12. [Authenticating Routes (JWT)](#12-authenticating-routes-jwt)
-13. [Role-Based Authorization](#13-role-based-authorization)
-14. [API Key Authentication](#14-api-key-authentication)
-15. [Exposing in Swagger](#15-exposing-in-swagger)
-16. [Implementing a Strategy Backend](#16-implementing-a-strategy-backend)
-17. [Database Seeders](#17-database-seeders)
-18. [Configuration Reference](#18-configuration-reference)
-19. [Scaffold Generator (CLI)](#19-scaffold-generator-cli)
-20. [Testing](#20-testing)
-21. [Conventions Summary](#21-conventions-summary)
+12. [CSRF Protection](#12-csrf-protection)
+13. [Authenticating Routes (JWT)](#13-authenticating-routes-jwt)
+14. [Role-Based Authorization](#14-role-based-authorization)
+15. [API Key Authentication](#15-api-key-authentication)
+16. [Exposing in Swagger](#16-exposing-in-swagger)
+17. [Implementing a Strategy Backend](#17-implementing-a-strategy-backend)
+18. [Database Seeders](#18-database-seeders)
+19. [Configuration Reference](#19-configuration-reference)
+20. [Scaffold Generator (CLI)](#20-scaffold-generator-cli)
+21. [Testing](#21-testing)
+22. [Conventions Summary](#22-conventions-summary)
 
 ---
 
@@ -375,7 +376,51 @@ Available options:
 
 ---
 
-## 12. Authenticating Routes (JWT)
+## 12. CSRF Protection
+
+CSRF protection is built in via `src/middlewares/csrf.js`. It is **active only** when `PROJECT_TYPE` is set to `cookies` or `both` — skipped entirely for `jwt`-only projects.
+
+### How it works
+
+Uses the **double-submit cookie** pattern (no extra npm dependency):
+
+- **GET / HEAD / OPTIONS** — generates a random token, sets it as a non-httpOnly cookie named `csrf-token`
+- **POST / PUT / DELETE / PATCH** — validates the `X-CSRF-Token` header against the cookie value
+
+If the tokens don't match, the request is rejected with `403`.
+
+### Client-side usage
+
+Your frontend JS reads the `csrf-token` cookie and sends it back as a header:
+
+```js
+// Read the CSRF token cookie (browser)
+const csrfToken = document.cookie
+  .split('; ')
+  .find(row => row.startsWith('csrf-token='))
+  ?.split('=')[1];
+
+fetch('/api/v1/auth/login', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'X-CSRF-Token': csrfToken,
+  },
+  body: JSON.stringify({ email, password }),
+});
+```
+
+### Configuration
+
+| Env Variable | Effect |
+|---|---|
+| `PROJECT_TYPE=jwt` | CSRF disabled (default) |
+| `PROJECT_TYPE=cookies` | CSRF active, SameSite=strict |
+| `PROJECT_TYPE=both` | CSRF active, SameSite=lax |
+
+---
+
+## 13. Authenticating Routes (JWT)
 
 The `authenticate` middleware in `src/middlewares/auth.js` protects routes:
 
@@ -402,7 +447,7 @@ const userRole = req.user.role;
 
 ---
 
-## 13. Role-Based Authorization
+## 14. Role-Based Authorization
 
 Use the `authorize` middleware after `authenticate`:
 
@@ -421,7 +466,7 @@ Returns `403 ForbiddenError` if the user's role is not in the allowed list.
 
 ---
 
-## 14. API Key Authentication
+## 15. API Key Authentication
 
 Routes can be protected using API keys instead of JWT tokens. API keys are persisted as bcrypt hashes — the raw key is only visible once at creation.
 
@@ -498,7 +543,7 @@ curl -X DELETE http://localhost:5000/api/v1/api-keys/<key-id> \
 
 ---
 
-## 15. Exposing in Swagger
+## 16. Exposing in Swagger
 
 Swagger docs are auto-generated from route files. Add a `docs` property:
 
@@ -595,7 +640,7 @@ The tag is derived from the immediate parent folder name. For example, a route a
 
 ---
 
-## 16. Implementing a Strategy Backend
+## 17. Implementing a Strategy Backend
 
 Strategy files are in `src/lib/strategies/`. Each domain has interchangeable implementations.
 
@@ -694,7 +739,7 @@ PostgresStrategy and S3StorageStrategy use **lazy `require()`** inside their met
 
 ---
 
-## 17. Database Seeders
+## 18. Database Seeders
 
 Seeders populate your development database with realistic test data using `@faker-js/faker`.
 
@@ -712,6 +757,9 @@ npm run seed -- --only user
 
 # Scaffold a new seeder file
 npm run make:seeder -- Product
+
+# Auto-sync Postgres schema on model changes (run alongside npm run dev)
+npm run cb-sync
 ```
 
 ### Seeder Definition Format
@@ -742,16 +790,18 @@ Files are auto-discovered by `src/bootstrap/loadSeeders.js` — no manual regist
 
 
 
-## 18. Configuration Reference
+## 19. Configuration Reference
 
 ### Environment Variables
 
 | Variable | Default | Description |
-|---|---|---|---|
+|---|---|---|---|---|
 | `NODE_ENV` | `development` | Runtime environment |
 | `PORT` | `5000` | HTTP server port |
 | `BODY_LIMIT` | `1mb` | Max JSON request body size |
+| `PROJECT_TYPE` | `jwt` | Auth mode: `jwt` (Bearer), `cookies`, or `both` |
 | `MONGO_URI` | `mongodb://localhost:27017/myapp_dev` | MongoDB connection string |
+| `POSTGRES_URI` | — | PostgreSQL connection string |
 | `BCRPT_SALT_SIZE` | `12` | Bcrypt salt rounds |
 | `JWT_SECRET` | — | JWT signing secret |
 | `JWT_EXPIRES_IN` | `15m` | Access token expiry |
@@ -763,6 +813,9 @@ Files are auto-discovered by `src/bootstrap/loadSeeders.js` — no manual regist
 | `DB_DRIVER` | `mongo` | Database strategy (`mongo` or `postgres`) |
 | `STORAGE_DRIVER` | `local` | Storage strategy (`local` or `s3`) |
 | `EMAIL_DRIVER` | `console` | Email strategy (`console`, `smtp`, or `stub`) |
+| `CACHE_DRIVER` | `memory` | Cache strategy (`memory`, `file`, or `redis`) |
+| `CACHE_TTL` | `300` | Default cache TTL in seconds |
+| `REDIS_URL` | — | Redis connection string (when `CACHE_DRIVER=redis`) |
 
 ### System Config (`src/config/system.js`)
 
@@ -777,14 +830,14 @@ Files are auto-discovered by `src/bootstrap/loadSeeders.js` — no manual regist
 ### Middleware Pipeline (default order)
 
 ```
-favicon → helmet → cors → cookieParser → json → urlencoded → rateLimiter → perfMonitor → tracer → injectServices → responder → activityLog → routes → errorHandler
+favicon → helmet → cors → cookieParser → json → urlencoded → csrf → rateLimiter → perfMonitor → tracer → injectServices → responder → activityLog → routes → errorHandler
 ```
 
 Edit `MIDDLEWARE_PIPELINE` in `src/config/system.js` to reorder or omit middleware. Add new keys by registering in `middlewareMap` in `src/bootstrap/index.js`.
 
 ---
 
-## 19. Scaffold Generator (CLI)
+## 20. Scaffold Generator (CLI)
 
 The framework provides Laravel-style `make:*` commands to scaffold individual artifacts or full resources:
 
@@ -828,7 +881,7 @@ After generating, the container auto-discovers the new repository and service fi
 
 ---
 
-## 20. Testing
+## 21. Testing
 
 Tests live in `src/tests/` and use Jest.
 
@@ -858,7 +911,7 @@ bash src/tools/docker-cli/test.sh           # Docker
 
 ---
 
-## 21. Conventions Summary
+## 22. Conventions Summary
 
 | Concern | Location | Responsibility |
 |---|---|---|
