@@ -162,6 +162,61 @@ class PostgresStrategy {
     const { rows } = await pool.query(text, [id]);
     return rows[0] || null;
   }
+
+  async rawQuery(text, params = []) {
+    const pool = await this._getPool();
+    const { rows } = await pool.query(text, params);
+    return rows;
+  }
+
+  async execute(text, params = []) {
+    const pool = await this._getPool();
+    const { rowCount, rows } = await pool.query(text, params);
+    return { rowCount, rows };
+  }
+
+  async forUpdate(model, id) {
+    const pool = await this._getPool();
+    const text = `SELECT * FROM ${this._table(model)} WHERE "id" = $1 FOR UPDATE`;
+    const { rows } = await pool.query(text, [id]);
+    return rows[0] || null;
+  }
+
+  async forFind(model, query = {}) {
+    const pool = await this._getPool();
+    const { clause, values } = this._where(query);
+    const text = `SELECT * FROM ${this._table(model)} ${clause} FOR UPDATE`;
+    const { rows } = await pool.query(text, values);
+    return rows;
+  }
+
+  async withTransaction(callback) {
+    const { Pool } = require('pg');
+    const pool = this._pool || new Pool({ connectionString: this.connectionString });
+    if (!this._pool) {
+      this._pool = pool;
+      await pool.connect();
+    }
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const fakePool = { query: (text, params) => client.query(text, params) };
+      const trx = new Proxy(this, {
+        get: (target, prop) => {
+          if (prop === '_getPool') return () => fakePool;
+          return Reflect.get(target, prop);
+        }
+      });
+      const result = await callback(trx);
+      await client.query('COMMIT');
+      return result;
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  }
 }
 
 module.exports = PostgresStrategy;

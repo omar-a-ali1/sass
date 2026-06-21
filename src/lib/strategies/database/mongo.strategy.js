@@ -1,66 +1,28 @@
-/**
- * MongoDB Strategy
- *
- * Concrete implementation of the database strategy interface
- * using Mongoose. Each method receives a model name string
- * and resolves the registered Mongoose model at runtime.
- *
- * @module strategies/database/mongo
- */
-
 const mongoose = require('mongoose');
 
 class MongoStrategy {
-  /**
-   * Resolve a Mongoose model by name
-   * @param {string} name - Registered model name (e.g. 'User')
-   * @returns {import('mongoose').Model} Mongoose model
-   */
   _model(name) {
     return mongoose.model(name);
   }
 
-  /**
-   * Find a single document matching query
-   * @param {string} model - Model name
-   * @param {Object} query - Query filter
-   * @returns {Promise<Object|null>}
-   */
-  async findOne(model, query) {
-    return this._model(model).findOne(query).lean();
+  async findOne(model, query, _opts = {}) {
+    let q = this._model(model).findOne(query);
+    if (_opts.session) q = q.session(_opts.session);
+    return q.lean();
   }
 
-  /**
-   * Find a document by ID
-   * @param {string} model - Model name
-   * @param {string|ObjectId} id - Document ID
-   * @returns {Promise<Object|null>}
-   */
-  async findById(model, id) {
-    return this._model(model).findById(id).lean();
+  async findById(model, id, _opts = {}) {
+    let q = this._model(model).findById(id);
+    if (_opts.session) q = q.session(_opts.session);
+    return q.lean();
   }
 
-  /**
-   * Find documents matching query
-   * @param {string} model - Model name
-   * @param {Object} [query={}] - Query filter
-   * @returns {Promise<Array>}
-   */
-  async find(model, query = {}) {
-    return this._model(model).find(query).lean();
+  async find(model, query = {}, _opts = {}) {
+    let q = this._model(model).find(query);
+    if (_opts.session) q = q.session(_opts.session);
+    return q.lean();
   }
 
-  /**
-   * Paginated find with total count
-   *
-   * @param {string}   model              - Model name
-   * @param {Object}   [query={}]         - MongoDB filter
-   * @param {Object}   [opts]             - Pagination options
-   * @param {number}   [opts.page=1]      - Page number (1-indexed)
-   * @param {number}   [opts.limit=20]    - Items per page
-   * @param {string}   [opts.sort='-createdAt'] - Sort expression
-   * @returns {Promise<{ data: Array, total: number, page: number, limit: number, totalPages: number }>}
-   */
   async paginate(model, query = {}, opts = {}) {
     const page = Math.max(1, opts.page || 1);
     const limit = Math.min(100, Math.max(1, opts.limit || 20));
@@ -75,51 +37,30 @@ class MongoStrategy {
     return { data, total, page, limit, totalPages: Math.ceil(total / limit) || 1 };
   }
 
-  /**
-   * Create a new document
-   * @param {string} model - Model name
-   * @param {Object} data - Document data
-   * @returns {Promise<Object>} Created document
-   */
-  async create(model, data) {
+  async create(model, data, _opts = {}) {
+    if (_opts.session) {
+      const doc = new (this._model(model))(data);
+      return doc.save({ session: _opts.session });
+    }
     return this._model(model).create(data);
   }
 
-  /**
-   * Find a document by ID and update
-   * @param {string} model - Model name
-   * @param {string|ObjectId} id - Document ID
-   * @param {Object} data - Update payload
-   * @returns {Promise<Object|null>} Updated document
-   */
-  async findByIdAndUpdate(model, id, data) {
-    return this._model(model).findByIdAndUpdate(id, data, { new: true }).lean();
+  async findByIdAndUpdate(model, id, data, _opts = {}) {
+    let q = this._model(model).findByIdAndUpdate(id, data, { new: true });
+    if (_opts.session) q = q.session(_opts.session);
+    return q.lean();
   }
 
-  /**
-   * Delete documents matching query
-   * @param {string} model - Model name
-   * @param {Object} query - Query filter
-   * @returns {Promise<Object>} Delete result
-   */
-  async deleteOne(model, query) {
-    return this._model(model).deleteOne(query);
+  async deleteOne(model, query, _opts = {}) {
+    let q = this._model(model).deleteOne(query);
+    if (_opts.session) q = q.session(_opts.session);
+    return q;
   }
 
-  /**
-   * Count documents matching query
-   * @param {string} model - Model name
-   * @param {Object} [query={}] - Query filter
-   * @returns {Promise<number>}
-   */
   async count(model, query = {}) {
     return this._model(model).countDocuments(query);
   }
 
-  /**
-   * Verify database connectivity
-   * @returns {Promise<boolean>} true if connected
-   */
   async verify() {
     return mongoose.connection.readyState === 1;
   }
@@ -132,14 +73,47 @@ class MongoStrategy {
     return this._model(model).insertMany(docs);
   }
 
-  async softDelete(model, id) {
-    return this._model(model).findByIdAndUpdate(id, { deletedAt: new Date() }, { new: true }).lean();
+  async softDelete(model, id, _opts = {}) {
+    let q = this._model(model).findByIdAndUpdate(id, { deletedAt: new Date() }, { new: true });
+    if (_opts.session) q = q.session(_opts.session);
+    return q.lean();
   }
 
-  async restore(model, id) {
-    return this._model(model).findByIdAndUpdate(id, { deletedAt: null }, { new: true }).lean();
+  async restore(model, id, _opts = {}) {
+    let q = this._model(model).findByIdAndUpdate(id, { deletedAt: null }, { new: true });
+    if (_opts.session) q = q.session(_opts.session);
+    return q.lean();
+  }
+
+  getModel(name) {
+    return this._model(name);
+  }
+
+  async aggregate(model, pipeline) {
+    return this._model(model).aggregate(pipeline);
+  }
+
+  async withTransaction(callback) {
+    const session = await mongoose.startSession();
+    try {
+      session.startTransaction();
+      const trx = new Proxy(this, {
+        get: (target, prop) => {
+          const orig = Reflect.get(target, prop);
+          if (typeof orig !== 'function') return orig;
+          return (...args) => orig.call(target, ...args, { session });
+        }
+      });
+      const result = await callback(trx);
+      await session.commitTransaction();
+      return result;
+    } catch (err) {
+      await session.abortTransaction();
+      throw err;
+    } finally {
+      session.endSession();
+    }
   }
 }
-
 
 module.exports = MongoStrategy;
