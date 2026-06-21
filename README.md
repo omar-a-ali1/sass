@@ -296,6 +296,7 @@ await db.withTransaction(async (trx) => {
 | POST | `/api/v1/api-keys` | Bearer | — | Create API key |
 | GET | `/api/v1/api-keys` | Bearer | — | List API keys |
 | DELETE | `/api/v1/api-keys/:id` | Bearer | — | Revoke API key |
+| GET | `/api/v1/csrf-cookie` | — | — | Set CSRF token cookie (cookie-mode only) |
 | GET | `/health` | — | — | System health + DB status |
 | GET | `/health/metrics` | — | — | Performance metrics |
 | GET | `/api-docs` | — | — | Swagger UI (dev only) |
@@ -406,6 +407,20 @@ npm test                          # 117 tests, 12 suites, ~10s
 | `env.test.js` | 3 | Environment loading |
 | `init.test.js` | 3 | Bootstrap initialization |
 | Static analysis | 14 | Lint-style checks |
+
+---
+
+## Roadmap — v2.0
+
+- **TypeScript rewrite** — strict mode, branded types, generics for DI, full end-to-end typing
+- **Proper DB migrations** — deterministic up/down, rollback, seed hooks (replace additive-only sync)
+- **Redis cache driver** — implement `ioredis` backend for `CacheStrategy`
+- **Background job queue** — BullMQ integration with worker process, retries, dead-letter
+- **npm package** — extract framework core so consumers `npm install sass-framework` instead of copying files
+- **Middleware pipeline** — per-route pipeline overrides, not just global order
+- **OpenTelemetry** — tracing spans across the full request lifecycle
+- **Rate limiter** — per-user/per-IP enforcement using the cache strategy backend
+- **WebSocket auth** — Socket.IO middleware tied into the JWT/API-key auth system
 
 ---
 

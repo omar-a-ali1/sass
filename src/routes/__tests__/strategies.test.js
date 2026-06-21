@@ -8,7 +8,7 @@ describe('MongoStrategy', () => {
   let mockModel;
 
   beforeAll(() => {
-    MongoStrategy = require('../lib/strategies/database/mongo.strategy');
+    MongoStrategy = require('../../lib/strategies/database/mongo.strategy');
   });
 
   beforeEach(() => {
@@ -91,7 +91,7 @@ describe('LocalStorageStrategy', () => {
   let tmpDir;
 
   beforeAll(() => {
-    LocalStorageStrategy = require('../lib/strategies/storage/localStorage.strategy');
+    LocalStorageStrategy = require('../../lib/strategies/storage/localStorage.strategy');
   });
 
   beforeEach(() => {
@@ -162,7 +162,7 @@ describe('PostgresStrategy', () => {
     mockQuery = jest.fn();
     mockPool = { connect: jest.fn().mockResolvedValue(), query: mockQuery };
     jest.mock('pg', () => ({ Pool: jest.fn(() => mockPool) }), { virtual: true });
-    PostgresStrategy = require('../lib/strategies/database/postgres.strategy');
+    PostgresStrategy = require('../../lib/strategies/database/postgres.strategy');
   });
 
   beforeEach(() => {
@@ -269,7 +269,7 @@ describe('S3StorageStrategy', () => {
       GetObjectCommand: mockCommands.GetObjectCommand,
       DeleteObjectCommand: mockCommands.DeleteObjectCommand,
     }), { virtual: true });
-    S3StorageStrategy = require('../lib/strategies/storage/s3Storage.strategy');
+    S3StorageStrategy = require('../../lib/strategies/storage/s3Storage.strategy');
   });
 
   beforeEach(() => {

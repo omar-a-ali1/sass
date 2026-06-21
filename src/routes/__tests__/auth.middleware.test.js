@@ -7,7 +7,7 @@ describe('Auth Middleware', () => {
   let next;
 
   beforeAll(() => {
-    authenticate = require('../middlewares/auth');
+    authenticate = require('../../middlewares/auth');
   });
 
   beforeEach(() => {
@@ -96,7 +96,7 @@ describe('Authorize Middleware', () => {
   let next;
 
   beforeAll(() => {
-    authorize = require('../middlewares/authorize');
+    authorize = require('../../middlewares/authorize');
   });
 
   beforeEach(() => {

@@ -10,7 +10,7 @@ function collectRoutes(dir = routesDir, basePath = '') {
   const routes = [];
 
   for (const entry of entries) {
-    if (entry.name.startsWith('.')) continue;
+    if (entry.name.startsWith('.') || entry.name === '__tests__') continue;
     const fullPath = path.join(dir, entry.name);
 
     if (entry.isDirectory()) {
@@ -59,7 +59,7 @@ function buildRouter(dir = routesDir) {
   const entries = fs.readdirSync(dir, { withFileTypes: true });
 
   for (const entry of entries) {
-    if (entry.name.startsWith('.')) continue;
+    if (entry.name.startsWith('.') || entry.name === '__tests__') continue;
     const fullPath = path.join(dir, entry.name);
 
     if (entry.isDirectory()) {

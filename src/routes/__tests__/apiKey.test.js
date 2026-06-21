@@ -1,9 +1,3 @@
-/**
- * API Key tests
- *
- * @module tests/apiKey
- */
-
 describe('ApiKeyService', () => {
   let ApiKeyService;
   let mockApiKeyRepository;
@@ -11,7 +5,7 @@ describe('ApiKeyService', () => {
   let service;
 
   beforeAll(() => {
-    ApiKeyService = require('../services/apiKeyService');
+    ApiKeyService = require('../../services/apiKeyService');
   });
 
   beforeEach(() => {

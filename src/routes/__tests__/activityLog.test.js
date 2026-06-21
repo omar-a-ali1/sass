@@ -29,7 +29,7 @@ describe('ActivityLog Middleware', () => {
 
   it('should attach activityLog middleware without crashing', async () => {
     app = express();
-    app.use(require('../middlewares/activityLog'));
+    app.use(require('../../middlewares/activityLog'));
     app.get('/test', (req, res) => res.json({ ok: true }));
 
     await new Promise((resolve) => { server = app.listen(0, () => { port = server.address().port; resolve(); }); });
@@ -44,7 +44,7 @@ describe('ActivityLogService', () => {
   let ActivityLogService;
 
   beforeAll(() => {
-    ActivityLogService = require('../services/activityLogService');
+    ActivityLogService = require('../../services/activityLogService');
   });
 
   it('should be a class', () => {
@@ -89,7 +89,7 @@ describe('ActivityLogRepository', () => {
   let ActivityLogRepository;
 
   beforeAll(() => {
-    ActivityLogRepository = require('../repositories/activityLog.repository');
+    ActivityLogRepository = require('../../repositories/activityLog.repository');
   });
 
   it('should be a class', () => {

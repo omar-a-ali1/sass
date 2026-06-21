@@ -1,6 +1,6 @@
 const http = require('http');
 const express = require('express');
-const createRateLimiter = require('../middlewares/rateLimiter');
+const createRateLimiter = require('../../middlewares/rateLimiter');
 
 describe('Rate Limiter Middleware', () => {
   let app;

@@ -97,7 +97,7 @@ await db.withTransaction(async (trx) => {
 
 ### CSRF protection
 
-CSRF is auto-enabled when `PROJECT_TYPE=cookies` or `PROJECT_TYPE=both`. The middleware uses the double-submit cookie pattern — no extra config needed. The frontend must read the `csrf-token` cookie and send it as the `X-CSRF-Token` header on state-changing requests.
+CSRF is auto-enabled when `PROJECT_TYPE=cookies` or `PROJECT_TYPE=both`. The middleware uses the Sanctum-style double-submit cookie pattern — no extra config needed. Call `GET /api/v1/csrf-cookie` to obtain the token, then read the `csrf-token` cookie and send it as the `X-CSRF-Token` header on state-changing requests.
 
 ### Response caching
 

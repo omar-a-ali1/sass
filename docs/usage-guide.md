@@ -382,25 +382,27 @@ CSRF protection is built in via `src/middlewares/csrf.js`. It is **active only**
 
 ### How it works
 
-Uses the **double-submit cookie** pattern (no extra npm dependency):
+Uses the **Sanctum-style double-submit cookie** pattern (no extra npm dependency):
 
-- **GET / HEAD / OPTIONS** — generates a random token, sets it as a non-httpOnly cookie named `csrf-token`
-- **POST / PUT / DELETE / PATCH** — validates the `X-CSRF-Token` header against the cookie value
+- **First**, call `GET /api/v1/csrf-cookie` to receive the `csrf-token` cookie
+- **Then**, on state-changing requests (POST / PUT / DELETE / PATCH), send the token back as `X-CSRF-Token` header
 
-If the tokens don't match, the request is rejected with `403`.
+If the tokens don't match or are missing, the request is rejected with `403`.
 
 ### Client-side usage
 
-Your frontend JS reads the `csrf-token` cookie and sends it back as a header:
-
 ```js
-// Read the CSRF token cookie (browser)
+// 1. Get a CSRF cookie first (call once at app startup)
+await fetch('http://localhost:5000/api/v1/csrf-cookie');
+
+// 2. Read the csrf-token cookie
 const csrfToken = document.cookie
   .split('; ')
   .find(row => row.startsWith('csrf-token='))
   ?.split('=')[1];
 
-fetch('/api/v1/auth/login', {
+// 3. Send it on every state-changing request
+fetch('http://localhost:5000/api/v1/auth/login', {
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',

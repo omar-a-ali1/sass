@@ -5,7 +5,7 @@ describe('SecurityRepository', () => {
   let repo;
 
   beforeAll(() => {
-    SecurityRepository = require('../repositories/security.repository');
+    SecurityRepository = require('../../repositories/security.repository');
   });
 
   beforeEach(() => {
@@ -82,7 +82,7 @@ describe('verifyJwt (standalone export)', () => {
   let mod;
 
   beforeAll(() => {
-    mod = require('../repositories/security.repository');
+    mod = require('../../repositories/security.repository');
   });
 
   it('should verify a valid access token', () => {
@@ -115,7 +115,7 @@ describe('verifyRefreshJwt (standalone export)', () => {
   let mod;
 
   beforeAll(() => {
-    mod = require('../repositories/security.repository');
+    mod = require('../../repositories/security.repository');
   });
 
   it('should verify a valid refresh token', () => {

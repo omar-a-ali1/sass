@@ -379,14 +379,16 @@ upload({ field, maxCount, maxSize, allowedMimes, prefix })
 
 ### `src/middlewares/csrf.js` — CSRF Protection
 
-Double-submit cookie CSRF protection. Active only when `PROJECT_TYPE` is `cookies` or `both` (skipped entirely for `jwt`-only projects).
+Sanctum-style double-submit cookie CSRF protection. Active only when `PROJECT_TYPE` is `cookies` or `both` (skipped entirely for `jwt`-only projects).
 
-| Method | Behaviour |
+| Behaviour | Description |
 |---|---|
-| GET / HEAD / OPTIONS | Generates a random token, sets it as a non-httpOnly cookie (`csrf-token`) |
-| POST / PUT / DELETE / PATCH | Validates `X-CSRF-Token` header against the cookie value. Returns `403` on mismatch |
+| GET / HEAD / OPTIONS | Pass through — no cookie auto-generation |
+| POST / PUT / DELETE / PATCH | Validates `X-CSRF-Token` header against `csrf-token` cookie. Returns `403` on mismatch |
 
-SameSite is set to `strict` for cookie-only projects, `lax` for mixed-mode.
+**Getting a CSRF token** — call the dedicated route `GET /api/v1/csrf-cookie` to receive the `csrf-token` cookie. This follows the same pattern as Laravel Sanctum.
+
+The middleware exports `setCsrfCookie(req, res)` for programmatic use. SameSite is set to `strict` for cookie-only projects, `lax` for mixed-mode.
 
 ### `src/middlewares/cache.js` — Response Caching
 

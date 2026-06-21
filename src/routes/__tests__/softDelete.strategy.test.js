@@ -1,16 +1,10 @@
-/**
- * Soft Delete strategy tests
- *
- * @module tests/softDelete.strategy
- */
-
 describe("MongoStrategy — soft delete", () => {
   let MongoStrategy;
   let strategy;
   let mockModel;
 
   beforeAll(() => {
-    MongoStrategy = require("../lib/strategies/database/mongo.strategy");
+    MongoStrategy = require("../../lib/strategies/database/mongo.strategy");
   });
 
   beforeEach(() => {
@@ -75,7 +69,7 @@ describe("PostgresStrategy — soft delete", () => {
     jest.mock("pg", () => ({ Pool: jest.fn(() => mockPool) }), {
       virtual: true,
     });
-    PostgresStrategy = require("../lib/strategies/database/postgres.strategy");
+    PostgresStrategy = require("../../lib/strategies/database/postgres.strategy");
   });
 
   beforeEach(() => {
