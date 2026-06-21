@@ -62,6 +62,39 @@ Refactor to the full chain before merging.
 1. Implement the interface in `src/lib/strategies/<domain>/`
 2. Register it in `src/bootstrap/loadContainer.js` with a config-driven driver map
 
+### Cross-model joins
+
+Use `db.join()` to query related data across collections/tables — works on both Mongo and Postgres:
+
+```js
+const result = await db.join('Order', [
+  { with: 'User', local: 'userId', foreign: '_id', as: 'user' },
+], { status: 'active' }, { page: 1, limit: 20 });
+```
+
+### Database transactions
+
+Use `db.withTransaction()` for atomic multi-step operations — the callback receives a `trx` proxy:
+
+```js
+await db.withTransaction(async (trx) => {
+  const account = await trx.forUpdate('Account', accountId);
+  await trx.findByIdAndUpdate('Account', accountId, { balance: account.balance - 100 });
+  await trx.create('Transaction', { from: accountId, amount: 100 });
+});
+```
+
+All strategy methods called on `trx` automatically participate in the transaction.
+
+### Row-level locking (Postgres only)
+
+```js
+await db.withTransaction(async (trx) => {
+  const account = await trx.forUpdate('Account', accountId);   // single row
+  const pending = await trx.forFind('Transaction', { status: 'pending' });  // multiple rows
+});
+```
+
 ### Per-route rate limiting
 
 Add a `rateLimit` property to your route definition — the framework auto-creates and prepends the middleware:

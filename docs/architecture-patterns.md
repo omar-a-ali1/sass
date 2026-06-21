@@ -208,10 +208,44 @@ Pluggable backends for infrastructure concerns. Each domain defines an interface
 | Email | `consoleEmail.strategy.js` | `stubEmail.strategy.js` (placeholder) |
 
 ### MongoStrategy
-Full Mongoose wrapper: `create`, `findById`, `findOne`, `find`, `update`, `delete`, `count`. Resolves models dynamically via `mongoose.model()`.
+Full Mongoose wrapper: `create`, `findById`, `findOne`, `find`, `update`, `delete`, `count`, `paginate`, `insertMany`, `softDelete`, `restore`, `aggregate`, `join`, `withTransaction`. Resolves models dynamically via `mongoose.model()`.
+
+Methods accept an optional 3rd argument `opts = { session }` — when called inside a `withTransaction` callback, the transaction proxy auto-injects the session so all operations participate in the same atomic transaction.
+
+**`join`** builds `$lookup` aggregation stages for cross-collection queries with pagination support:
+```js
+const result = await db.join('Order', [
+  { with: 'User', local: 'userId', foreign: '_id', as: 'user' },
+], { status: 'active' }, { page: 1, limit: 20 });
+```
+
+**`withTransaction`** uses Mongoose `startSession()` + `commitTransaction`/`abortTransaction`:
+```js
+await db.withTransaction(async (trx) => {
+  await trx.create('Account', data);
+  await trx.findByIdAndUpdate('Account', id, update);
+});
+```
 
 ### PostgresStrategy
 Full implementation using `pg.Pool`. Uses lazy `require('pg')` inside methods so the dependency is optional. Parameterised queries prevent SQL injection.
+
+Additional methods beyond the common interface:
+
+- **`forUpdate(model, id)`** — `SELECT ... FOR UPDATE` for row-level locking within transactions
+- **`forFind(model, query)`** — `SELECT ... WHERE ... FOR UPDATE` to lock multiple rows
+- **`join(model, joins, query, opts)`** — builds `LEFT JOIN` SQL with pagination
+- **`withTransaction(callback)`** — wraps callback in `BEGIN`/`COMMIT`/`ROLLBACK`; the callback receives a `trx` proxy where all strategy methods use the same transaction client
+- **`rawQuery(text, params)`** — direct SQL access, returns rows
+- **`execute(text, params)`** — direct SQL, returns `{ rowCount, rows }`
+
+Row-locking example:
+```js
+await db.withTransaction(async (trx) => {
+  const account = await trx.forUpdate('Account', accountId);
+  await trx.findByIdAndUpdate('Account', accountId, { balance: account.balance - 100 });
+});
+```
 
 ### LocalStorageStrategy
 Full filesystem storage using `fs/promises`. Config: `{ uploadDir, baseUrl }`. Auto-creates upload directory.

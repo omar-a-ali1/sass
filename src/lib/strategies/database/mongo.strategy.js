@@ -93,6 +93,44 @@ class MongoStrategy {
     return this._model(model).aggregate(pipeline);
   }
 
+  async join(model, joins, query = {}, opts = {}) {
+    const joinArr = Array.isArray(joins) ? joins : [joins];
+    const page = Math.max(1, opts.page || 1);
+    const limit = Math.min(100, Math.max(1, opts.limit || 20));
+    const skip = (page - 1) * limit;
+    const sort = opts.sort || '-createdAt';
+
+    const lookupStages = joinArr.map(j => ({
+      $lookup: {
+        from: j.with.toLowerCase() + 's',
+        localField: j.local,
+        foreignField: j.foreign,
+        as: j.as || j.with,
+      }
+    }));
+
+    const pipeline = [
+      { $match: query },
+      ...lookupStages,
+      { $sort: Object.fromEntries([[sort.replace(/^-/, ''), sort.startsWith('-') ? -1 : 1]]) },
+      { $skip: skip },
+      { $limit: limit },
+    ];
+
+    const [data, countResult] = await Promise.all([
+      this._model(model).aggregate(pipeline),
+      this._model(model).countDocuments(query),
+    ]);
+
+    return {
+      data,
+      total: countResult,
+      page,
+      limit,
+      totalPages: Math.ceil(countResult / limit) || 1,
+    };
+  }
+
   async withTransaction(callback) {
     const session = await mongoose.startSession();
     try {

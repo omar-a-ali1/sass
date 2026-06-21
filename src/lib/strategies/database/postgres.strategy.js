@@ -175,6 +175,50 @@ class PostgresStrategy {
     return { rowCount, rows };
   }
 
+  async join(model, joins, query = {}, opts = {}) {
+    const joinArr = Array.isArray(joins) ? joins : [joins];
+    const page = Math.max(1, opts.page || 1);
+    const limit = Math.min(100, Math.max(1, opts.limit || 20));
+    const offset = (page - 1) * limit;
+    const sortRaw = opts.sort || 'id';
+    const desc = sortRaw.startsWith('-');
+    const sortCol = this._quote(desc ? sortRaw.slice(1) : sortRaw);
+    const dir = desc ? 'DESC' : 'ASC';
+
+    let select = `${this._table(model)}.*`;
+    const from = `${this._table(model)}`;
+    let joinsClause = '';
+
+    for (const j of joinArr) {
+      const alias = j.as || j.with;
+      const tbl = this._table(j.with);
+      joinsClause += ` LEFT JOIN ${tbl} ON ${this._table(model)}.${this._quote(j.local)} = ${tbl}.${this._quote(j.foreign)}`;
+      select += `, ${tbl}.*`;
+    }
+
+    const { clause, values } = this._where(query);
+    const pool = await this._getPool();
+
+    const [dataResult, countResult] = await Promise.all([
+      pool.query(
+        `SELECT ${select} FROM ${from} ${joinsClause} ${clause} ORDER BY ${this._table(model)}.${sortCol} ${dir} LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
+        [...values, limit, offset],
+      ),
+      pool.query(
+        `SELECT COUNT(*)::int AS count FROM ${from} ${joinsClause} ${clause}`,
+        values,
+      ),
+    ]);
+
+    return {
+      data: dataResult.rows,
+      total: countResult.rows[0].count,
+      page,
+      limit,
+      totalPages: Math.ceil(countResult.rows[0].count / limit) || 1,
+    };
+  }
+
   async forUpdate(model, id) {
     const pool = await this._getPool();
     const text = `SELECT * FROM ${this._table(model)} WHERE "id" = $1 FOR UPDATE`;

@@ -553,14 +553,118 @@ To add a new repository or service, just drop the file in the correct directory 
 
 ### Database Strategies
 
-| Strategy | Status | Methods |
-|---|---|---|
-| `mongo.strategy.js` | **Full** | `create`, `findById`, `findOne`, `find`, `paginate`, `update`, `delete`, `count`, `truncate`, `insertMany`, `softDelete`, `restore` |
-| `postgres.strategy.js` | **Full** | Same interface + `truncate`, `insertMany`, `softDelete`, `restore`; lazy `pg.Pool`, parameterised queries |
+Both `mongo.strategy.js` and `postgres.strategy.js` share the same core CRUD interface plus advanced features.
 
-**Soft delete methods:**
-- `softDelete(model, id)` — Sets `deletedAt` to current timestamp (Mongo: `findByIdAndUpdate`, Postgres: `UPDATE ... SET "deletedAt" = NOW()`)
-- `restore(model, id)` — Clears `deletedAt` to `null`
+#### Common Methods
+
+| Method | Signature | Description |
+|---|---|---|
+| `findOne` | `(model, query[, opts])` | Find first matching document |
+| `findById` | `(model, id[, opts])` | Find by primary key (`_id` / `id`) |
+| `find` | `(model, query[, opts])` | Find all matching documents |
+| `create` | `(model, data[, opts])` | Create a new document |
+| `findByIdAndUpdate` | `(model, id, data[, opts])` | Update by primary key, returns updated doc |
+| `deleteOne` | `(model, query[, opts])` | Delete first match |
+| `count` | `(model, query)` | Count matching documents |
+| `paginate` | `(model, query, opts)` | Paginated list with `{ page, limit, sort }` → `{ data, total, page, limit, totalPages }` |
+| `verify` | `()` | Returns `true` if database is reachable |
+| `truncate` | `(model)` | Deletes all documents in the table/collection |
+| `insertMany` | `(model, docs)` | Bulk insert, returns inserted documents |
+| `softDelete` | `(model, id[, opts])` | Sets `deletedAt` to current timestamp |
+| `restore` | `(model, id[, opts])` | Clears `deletedAt` to `null` |
+| `join` | `(model, joins, query, opts)` | Cross-model join with pagination (see below) |
+| `withTransaction` | `(callback)` | Wraps callback in a DB transaction (see below) |
+
+For **MongoStrategy**, methods accept an optional 3rd argument `opts = { session }` — the `session` is auto-injected when called inside a `withTransaction` callback via the transaction proxy.
+
+For **PostgresStrategy**, the `opts` parameter is not available on individual methods; instead, the `withTransaction` proxy replaces `_getPool` so all queries within the callback execute on the transaction client.
+
+#### `withTransaction(callback)` — Database Transactions
+
+Both strategies expose `withTransaction` which accepts an `async callback(trx)` and rolls back on any thrown error.
+
+**PostgresStrategy** — wraps the callback in `BEGIN` / `COMMIT` / `ROLLBACK` using a dedicated `pg.Client` from the pool. The callback receives a `trx` proxy — all strategy methods called on it automatically use the transaction client.
+
+```js
+const result = await db.withTransaction(async (trx) => {
+  const account = await trx.findById('Account', accountId);
+  if (account.balance < amount) throw new Error('Insufficient funds');
+  await trx.findByIdAndUpdate('Account', accountId, { balance: account.balance - amount });
+  await trx.create('Transaction', { from: accountId, amount, type: 'debit' });
+  return { success: true };
+});
+// If callback throws → ROLLBACK, error propagates
+// If callback succeeds → COMMIT, result returned
+```
+
+**MongoStrategy** — uses Mongoose's `startSession()` with `commitTransaction` / `abortTransaction`. The callback receives a `trx` proxy — all strategy methods called on it automatically receive `{ session }`.
+
+```js
+const result = await db.withTransaction(async (trx) => {
+  const account = await trx.findById('Account', accountId);
+  await trx.findByIdAndUpdate('Account', accountId, { balance: account.balance - amount });
+  await trx.create('Transaction', { from: accountId, amount, type: 'debit' });
+});
+```
+
+#### `join(model, joins, query, opts)` — Cross-Model Joins
+
+Unified join API across both databases:
+
+| Param | Type | Description |
+|---|---|---|
+| `model` | `string` | Primary model name |
+| `joins` | `object \| array` | Single join `{ with, local, foreign, as }` or an array of them |
+| `query` | `object` | Filter conditions on the primary model |
+| `opts` | `object` | `{ page, limit, sort }` for paginated results |
+
+Returns: `{ data, total, page, limit, totalPages }`
+
+**MongoStrategy** — builds `$lookup` aggregation stages. Joined documents appear as an array under the `as` key (defaults to the joined model name).
+
+```js
+const result = await db.join('Order', [
+  { with: 'User', local: 'userId', foreign: '_id', as: 'user' },
+  { with: 'Product', local: 'productId', foreign: '_id', as: 'product' },
+], { status: 'active' }, { page: 1, limit: 20, sort: '-createdAt' });
+// data[0] = { ..., user: [{ ... }], product: [{ ... }] }
+```
+
+**PostgresStrategy** — builds `SELECT ... FROM primary LEFT JOIN secondary ON ...`. Joined columns appear flat in the row. Use `as` on each join to avoid name collisions (the alias is used as a column prefix).
+
+```js
+const result = await db.join('User', {
+  with: 'Profile',
+  local: 'userId',
+  foreign: 'id',
+  as: 'profile',
+}, { role: 'admin' }, { page: 1, limit: 20 });
+// data[0] = { id, name, role, profile_id, profile_bio, ... }
+```
+
+#### PostgresStrategy-Only Methods
+
+| Method | Signature | Description |
+|---|---|---|
+| `forUpdate` | `(model, id)` | `SELECT ... WHERE "id" = $1 FOR UPDATE` — locks a row for the current transaction |
+| `forFind` | `(model, query)` | `SELECT ... WHERE ... FOR UPDATE` — locks all matching rows |
+| `rawQuery` | `(text, params)` | Direct SQL query, returns rows |
+| `execute` | `(text, params)` | Direct SQL, returns `{ rowCount, rows }` |
+
+**Usage with transactions:**
+```js
+await db.withTransaction(async (trx) => {
+  const account = await trx.forUpdate('Account', accountId);
+  await trx.findByIdAndUpdate('Account', accountId, { balance: account.balance - amount });
+});
+```
+
+#### MongoStrategy-Only Methods
+
+| Method | Signature | Description |
+|---|---|---|
+| `getModel` | `(name)` | Returns the raw Mongoose model class |
+| `aggregate` | `(model, pipeline)` | Run a MongoDB aggregation pipeline |
 
 ### Storage Strategies
 

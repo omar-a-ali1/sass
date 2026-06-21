@@ -625,6 +625,66 @@ const EmailStrategy = { console: ConsoleEmailStrategy, smtp: SmtpStrategy }[conf
 container.register('emailStrategy', new EmailStrategy());
 ```
 
+### Cross-Model Joins
+
+Both database strategies expose a `join()` method for querying across related tables/collections with a single call:
+
+```js
+// Single join
+const result = await db.join('User', {
+  with: 'Profile', local: 'userId', foreign: 'id', as: 'profile'
+}, { role: 'admin' }, { page: 1, limit: 20 });
+
+// Multiple joins with pagination
+const result = await db.join('Order', [
+  { with: 'User', local: 'userId', foreign: '_id', as: 'user' },
+  { with: 'Product', local: 'productId', foreign: '_id', as: 'product' },
+], { status: 'active' }, { page: 1, limit: 20, sort: '-createdAt' });
+```
+
+Returns: `{ data, total, page, limit, totalPages }`
+
+- **MongoStrategy** — uses `$lookup` aggregation; joined data appears as arrays under the `as` key
+- **PostgresStrategy** — uses `LEFT JOIN` SQL; joined columns appear flat in the row
+
+### Database Transactions
+
+Use `withTransaction(callback)` for atomic multi-step operations:
+
+```js
+// Transfer funds — all or nothing
+await db.withTransaction(async (trx) => {
+  const sender = await trx.forUpdate('Account', senderId);
+  const receiver = await trx.findById('Account', receiverId);
+  if (sender.balance < amount) throw new Error('Insufficient funds');
+  await trx.findByIdAndUpdate('Account', senderId, { balance: sender.balance - amount });
+  await trx.findByIdAndUpdate('Account', receiverId, { balance: receiver.balance + amount });
+  await trx.create('Transaction', { from: senderId, to: receiverId, amount });
+});
+// On throw → full rollback. On success → commit.
+```
+
+- **PostgresStrategy** — uses `pg.Client` with `BEGIN`/`COMMIT`/`ROLLBACK`. The `forUpdate()` method enables pessimistic row-level locking within the transaction.
+- **MongoStrategy** — uses Mongoose `startSession()` with `commitTransaction`/`abortTransaction`.
+
+The callback receives a `trx` proxy — all strategy methods called on it automatically participate in the transaction.
+
+### PostgresStrategy Row Locking
+
+When using PostgreSQL, two methods provide pessimistic locking within transactions:
+
+```js
+await db.withTransaction(async (trx) => {
+  // Lock a single row by ID
+  const account = await trx.forUpdate('Account', accountId);
+
+  // Or lock all matching rows
+  const pending = await trx.forFind('Transaction', { status: 'pending' });
+});
+```
+
+Both append `FOR UPDATE` to the `SELECT` query, preventing concurrent writes to the locked rows until the transaction commits or rolls back.
+
 **Rules:**
 - All implementations of the same domain must share the same method signatures
 - Methods should be `async` and return Promises
