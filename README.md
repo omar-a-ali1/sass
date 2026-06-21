@@ -24,30 +24,32 @@
 ## Features
 
 - **Dependency Injection** — Map-based IoC container with lifecycle registration, auto-discovered repos + services
-- **Strategy Pattern** — Pluggable backends (Mongo/Postgres for DB, Local/S3 for storage, Console/Stub for email)
+- **Strategy Pattern** — Pluggable backends (Mongo/Postgres for DB, Local/S3 for storage, Console/SMTP/Stub for email)
 - **Database Transactions** — `withTransaction()` on both strategies with unified `trx` proxy API; row-level locking (`forUpdate`/`forFind`) on Postgres
 - **Cross-Model Joins** — `db.join()` with pagination, works on both Mongo (`$lookup`) and Postgres (`LEFT JOIN`)
 - **JWT Auth** — Access + refresh token flow with Bearer + cookie fallback, role-based `authorize()`, forgot/reset password
 - **Auto-Discovery** — Models, routes, and Swagger docs auto-load from directory structure — zero manual wiring
-- **Auto-Swagger** — OpenAPI 3.0 generated from route `docs` + auto-detected Joi body/query schemas + auto-detected `authenticate` middleware + `:id` params. Error responses (400, 401, 403, 500) auto-included
+- **Auto-Swagger** — OpenAPI 3.0 generated from route `docs` + auto-detected Joi schemas + `authenticate` middleware + `:id` params. Error responses (400, 401, 403, 500) auto-included
 - **Swagger UI** — Interactive docs at `/api-docs` (development only)
+- **API Key Management** — Generate, validate (bcrypt), and revoke API keys with `X-API-Key` authentication middleware
 - **Paginated Queries** — `paginate()` with skip/limit + total count, unified across both DB strategies
+- **Soft Delete** — `softDelete()` / `restore()` on both database strategies, `deletedAt` field support
 - **Response Envelope** — `res.respond()`, `res.paginated()`, `res.fail()` — consistent JSON shape with `traceId`
 - **File Uploads** — Multer bridge → storage strategy. Factory `upload({ field, maxSize })` returns middleware array
-- **API Key Management** — Generate, validate (bcrypt), and revoke API keys with `X-API-Key` authentication middleware
-- **Soft Delete** — `softDelete()` / `restore()` methods on both database strategies, `deletedAt` field support
-- **Seeder System** — Auto-discovers `*.seeder.js` in `src/seeders/`, driver-aware (Mongo + Postgres)
-- **CLI Scaffolding** — Laravel-style `npm run make:controller|route|service|repository|validation|model|seeder|all`
+- **Seeder System** — Auto-discovers `*.seeder.js` in `src/seeders/`, driver-aware (Mongo + Postgres), `--clean` flag
+- **CLI Scaffolding** — Laravel-style `npm run make:*` commands (controller, route, service, repository, validation, model, seeder, all)
 - **Route Lister** — `npm run routes` — colour-coded methods, clickable links, middleware chain
 - **Model Inspector** — `npm run models` — lists models, tables, and column types per driver
 - **DB Query CLI** — `npm run fetch -- <Model>` — query records with `--id`, `--where`, `--limit`, `--sort`, `--raw`
-- **Configurable Middleware Pipeline** — Ordered middleware array in config, injected at bootstrap
+- **DB Sync Tool** — `npm run sync` — auto-syncs Postgres schema from Mongoose models (additive only)
 - **Performance Monitoring** — In-memory metrics at `/health/metrics`
+- **Configurable Middleware Pipeline** — Ordered array in config, injected at bootstrap
 - **Dynamic Routes** — Path params (`:id`) auto-detected in Swagger
 - **Per-Route Rate Limiting** — Declarative `rateLimit` property on route definitions
 - **Query Validation** — `validateQuery(joiSchema)` validates `req.query`, auto-documented in Swagger
-- **Typed Errors** — Consistent JSON error responses via error hierarchy
-- **Winston Logging** — Structured logging with file transports
+- **Typed Errors** — `AppError` hierarchy (Conflict, NotFound, Unauthorized, Forbidden, Validation, Server)
+- **Winston Logging** — Structured logging with console + file transports
+- **Activity Logging** — Auto-log every request via `activityLog` middleware
 - **Docker** — Multi-stage build + Docker Compose (dev, test, prod) with PostgreSQL + MongoDB
 
 ---
@@ -56,91 +58,157 @@
 
 ```
 ├── server.js                          # Entry point
-├── cli/
-│   ├── make.js                        # Scaffold generator (make:*)
-│   ├── list-routes.js                 # Route lister
-│   ├── list-models.js                 # Model/table inspector
-│   ├── fetch.js                       # DB query CLI
-│   └── seed.js                        # Seeder runner (driver-aware)
-├── docker-cli/
-│   ├── dev.sh                         # Start dev with MongoDB
-│   ├── dev-postgres.sh                # Start dev with PostgreSQL
-│   ├── test.sh                        # Run tests in Docker
-│   └── ...
 ├── src/
+│   ├── app.js                         # Express app export
 │   ├── bootstrap/
-│   │   ├── index.js                   # Express app assembly
-│   │   ├── loadModels.js              # Auto-scans models/
-│   │   ├── loadRoutes.js              # Recursively scans routes/ → Router
+│   │   ├── index.js                   # Express assembly from pipeline config
+│   │   ├── container.js               # DependencyContainer class
+│   │   ├── loadContainer.js           # IoC wiring (strategies → repos → services)
+│   │   ├── loadModels.js              # Auto-scans models/ → Mongoose + OpenAPI schemas
+│   │   ├── loadRoutes.js              # Recursively scans routes/ → Express Router
 │   │   ├── loadSwagger.js             # OpenAPI 3.0 generator
-│   │   ├── loadContainer.js           # IoC container (strategies → repos → services)
 │   │   └── loadSeeders.js             # Driver-aware seeder runner
 │   ├── config/
-│   │   ├── environment.js             # Env loading
-│   │   ├── database.js                # Connection
-│   │   ├── security.js                # Helmet, CORS, rate-limit
-│   │   └── system.js                  # Pipeline, HTTP codes
+│   │   ├── environment.js             # Env loading (.env.{NODE_ENV})
+│   │   ├── database.js                # MongoDB / Postgres connection
+│   │   ├── security.js                # Helmet, CORS, rate-limit config
+│   │   └── system.js                  # Pipeline, HTTP codes, Swagger config
 │   ├── controllers/                   # Request/response handling
-│   ├── errors/                        # AppError → 4xx/5xx
-│   ├── middlewares/                   # auth, authorize, validation, upload, rateLimiter...
-│   ├── models/                        # Mongoose schemas
-│   ├── repositories/                  # Data access layer
+│   │   ├── auth.controller.js
+│   │   ├── health.controller.js
+│   │   ├── user.controller.js
+│   │   └── apiKey.controller.js
+│   ├── lib/
+│   │   ├── assets/                    # Logo, favicon, SASS.svg
+│   │   ├── errors/                    # AppError + typed subclasses (7 files)
+│   │   ├── strategies/
+│   │   │   ├── database/
+│   │   │   │   ├── mongo.strategy.js      # Mongoose — CRUD, join, withTransaction
+│   │   │   │   └── postgres.strategy.js   # pg.Pool — same + forUpdate/forFind
+│   │   │   ├── email/
+│   │   │   │   ├── consoleEmail.strategy.js
+│   │   │   │   ├── smtpEmail.strategy.js
+│   │   │   │   └── stubEmail.strategy.js
+│   │   │   └── storage/
+│   │   │       ├── localStorage.strategy.js
+│   │   │       └── s3Storage.strategy.js
+│   │   ├── swagger/
+│   │   │   └── components/
+│   │   │       ├── index.js            # Security schemes, shared responses, schemas
+│   │   │       └── responses.js        # Auto-generated response docs
+│   │   └── utils/
+│   │       ├── logger.js               # Winston
+│   │       ├── sanitizeData.js         # Strip password/__v
+│   │       └── formatJoiErrors.js      # Joi → field map
+│   ├── middlewares/                    # 14 files
+│   │   ├── auth.js                     # JWT Bearer + cookie fallback
+│   │   ├── authorize.js                # Role-based access
+│   │   ├── authorizeApiKey.js          # API key permission check
+│   │   ├── apiKeyAuth.js               # X-API-Key header validation
+│   │   ├── validation.js               # validate(body), validateQuery(query)
+│   │   ├── upload.js                   # Multer → storage strategy
+│   │   ├── errorHandler.js             # Global error serializer
+│   │   ├── injectServices.js           # IoC → req.getService()
+│   │   ├── responder.js                # res.respond / paginated / fail
+│   │   ├── rateLimiter.js              # Per-route factory
+│   │   ├── tracer.js                   # Request ID + Morgan logging
+│   │   ├── perfMonitor.js              # Response time metrics
+│   │   ├── activityLog.js              # Auto-log every request
+│   │   └── fallback.js                 # 404 catch-all
+│   ├── models/
+│   │   ├── User.js
+│   │   ├── ApiKey.js
+│   │   └── ActivityLog.js
+│   ├── repositories/                   # Data access layer
+│   │   ├── user.repository.js
+│   │   ├── apiKey.repository.js
+│   │   ├── security.repository.js
+│   │   └── activityLog.repository.js
 │   ├── routes/
-│   │   ├── index.js                   # GET /
-│   │   ├── health/                    # /health, /health/metrics
-│   │   └── api/v1/                    # auth/, users/, api-keys/
-│   ├── seeders/                       # Faker-based seed definitions
-│   ├── services/                      # Business logic
-│   ├── lib/strategies/
-│   │   ├── database/
-│   │   │   ├── mongo.strategy.js      # Mongoose — CRUD, paginate, join, withTransaction
-│   │   │   └── postgres.strategy.js   # pg.Pool — same + forUpdate/forFind, rawQuery
-│   │   ├── storage/
-│   │   │   ├── localStorage.strategy.js
-│   │   │   └── s3Storage.strategy.js
-│   │   └── email/
-│   │       ├── consoleEmail.strategy.js
-│   │       └── stubEmail.strategy.js
-│   ├── tests/                         # 117 tests, 12 suites
-│   ├── utils/                         # Logger, sanitize, formatJoiErrors
-│   └── validation/                    # Joi schemas
-├── docs/                              # Full documentation
-├── docker-compose.yaml
-├── Dockerfile
-└── .env.{development,test}
+│   │   ├── index.js                    # GET /
+│   │   ├── health/
+│   │   │   ├── index.js                # GET /health
+│   │   │   └── metrics.js              # GET /health/metrics
+│   │   └── api/v1/
+│   │       ├── auth/                   # login, register, refresh-token, forgot/reset, me
+│   │       ├── users/                  # GET /, GET /:id
+│   │       └── api-keys/               # POST /, GET /, DELETE /:id
+│   ├── seeders/
+│   │   └── user.seeder.js
+│   ├── services/                       # Business logic
+│   │   ├── authService.js
+│   │   ├── userService.js
+│   │   ├── apiKeyService.js
+│   │   ├── securityService.js
+│   │   └── activityLogService.js
+│   ├── tests/                          # 117 tests, 12 suites
+│   ├── tools/
+│   │   ├── cli/
+│   │   │   ├── make.js                 # Scaffold generator
+│   │   │   ├── list-routes.js          # Route lister
+│   │   │   ├── list-models.js          # Model/table inspector
+│   │   │   ├── fetch.js                # DB query CLI
+│   │   │   ├── seed.js                 # Seeder runner
+│   │   │   └── sync-db.js              # Postgres schema sync
+│   │   └── docker-cli/                 # 7 shell scripts
+│   │       ├── dev.sh                  # Dev with MongoDB
+│   │       ├── dev-postgres.sh         # Dev with PostgreSQL
+│   │       ├── test.sh                 # Run tests
+│   │       ├── seed.sh                 # Seed database
+│   │       ├── models.sh               # Inspect models
+│   │       ├── fetch.sh                # Query records
+│   │       └── sync.sh                 # Sync Postgres schema
+│   └── validation/
+│       ├── auth/                       # login, register, refresh, forgot, reset
+│       ├── users/
+│       │   └── list.js                 # page, limit, sort, search
+│       └── api-keys/
+│           └── create.js               # name, permissions
+├── docs/                               # 12 documentation files
+├── server.js                           # HTTP server + Socket.IO
+├── docker-compose.yaml                 # Multi-service Compose
+├── Dockerfile                          # Multi-stage build
+├── jest.config.js
+├── jest.setup.js
+├── package.json
+├── AI_CONTEXT.md
+├── CHANGELOG.md
+├── CONTRIBUTING.md
+├── LICENSE
+├── VIBE_CODING.md
+├── .env.example
+├── .env.development
+└── .env.test
 ```
 
 ---
 
 ## CLI Reference
 
-### Scaffolding
-
 ```bash
-npm run make:controller -- Product    # src/controllers/product.controller.js
+# Scaffolding
+npm run make:controller -- Product
 npm run make:route -- Product         # 5 CRUD route files
-npm run make:service -- Product       # src/services/productService.js
-npm run make:repository -- Product    # src/repositories/product.repository.js
-npm run make:validation -- Product    # Joi schemas (create, update, list)
-npm run make:model -- Product         # Mongoose model
-npm run make:seeder -- Product        # Faker seeder definition
-npm run make:all -- Product           # Everything above (except routes)
-```
+npm run make:service -- Product
+npm run make:repository -- Product
+npm run make:validation -- Product    # create, update, list schemas
+npm run make:model -- Product
+npm run make:seeder -- Product
+npm run make:all -- Product           # Everything except routes
 
-### Database
-
-```bash
+# Database
 npm run seed                          # Seed all (driver-aware)
 npm run seed -- --clean               # Drop + reseed
 npm run seed -- --only user           # Seed only one
-npm run models                        # List tables + columns
+npm run models                        # List tables + column types
 npm run fetch -- User                 # Query records
 npm run fetch -- User --id 1          # By ID
-```
 
-### Routing & Dev
+# Schema sync (Postgres)
+npm run sync                          # Sync all models to Postgres
+npm run sync User Store               # Sync specific models
 
-```bash
+# Routing & Dev
 npm run routes                        # Colour-coded route list
 npm run dev                           # Dev server (node --watch)
 npm start                             # Production server
@@ -152,12 +220,13 @@ npm test                              # 117 tests, 12 suites
 ## Docker CLI
 
 ```bash
-bash docker-cli/dev.sh                # Dev with MongoDB
-bash docker-cli/dev-postgres.sh       # Dev with PostgreSQL
-bash docker-cli/test.sh               # Run tests
-bash docker-cli/seed.sh               # Seed database
-bash docker-cli/models.sh             # Inspect models
-bash docker-cli/fetch.sh User --limit 5
+bash src/tools/docker-cli/dev.sh              # Dev with MongoDB
+bash src/tools/docker-cli/dev-postgres.sh     # Dev with PostgreSQL
+bash src/tools/docker-cli/test.sh             # Run tests
+bash src/tools/docker-cli/seed.sh             # Seed database
+bash src/tools/docker-cli/models.sh           # Inspect models
+bash src/tools/docker-cli/fetch.sh User --limit 5
+bash src/tools/docker-cli/sync.sh             # Sync Postgres schema
 ```
 
 ---
@@ -166,7 +235,7 @@ bash docker-cli/fetch.sh User --limit 5
 
 ### Cross-Model Joins
 
-Query related data across tables/collections with a single call — works on both strategies:
+Query related data across tables/collections — works on both strategies:
 
 ```js
 const result = await db.join('Order', [
@@ -190,16 +259,37 @@ await db.withTransaction(async (trx) => {
 });
 ```
 
-All strategy methods called on the `trx` proxy participate in the transaction. On throw → full rollback.
+All methods on the `trx` proxy participate in the transaction. On throw → full rollback.
 
 ### Row-Level Locking (Postgres)
 
 ```js
 await db.withTransaction(async (trx) => {
   const account = await trx.forUpdate('Account', accountId);        // single row
-  const pending = await trx.forFind('Transaction', { status: 'pending' }); // multiple rows
+  const pending = await trx.forFind('Transaction', { status: 'pending' }); // multiple
 });
 ```
+
+---
+
+## API Endpoints
+
+| Method | Path | Auth | Rate Limit | Description |
+|---|---|---|---|---|
+| POST | `/api/v1/auth/register` | — | 10/min | Create account |
+| POST | `/api/v1/auth/login` | — | 5/min | Get tokens |
+| POST | `/api/v1/auth/refresh-token` | Cookie | 20/min | Refresh tokens |
+| POST | `/api/v1/auth/forgot-password` | — | 5/min | Request password reset |
+| POST | `/api/v1/auth/reset-password` | — | 10/min | Reset password with token |
+| GET | `/api/v1/auth/me` | Bearer | — | Current user profile |
+| GET | `/api/v1/users/:id` | Bearer | — | Get user by ID |
+| GET | `/api/v1/users` | — | — | List users (paginated, search) |
+| POST | `/api/v1/api-keys` | Bearer | — | Create API key |
+| GET | `/api/v1/api-keys` | Bearer | — | List API keys |
+| DELETE | `/api/v1/api-keys/:id` | Bearer | — | Revoke API key |
+| GET | `/health` | — | — | System health + DB status |
+| GET | `/health/metrics` | — | — | Performance metrics |
+| GET | `/api-docs` | — | — | Swagger UI (dev only) |
 
 ---
 
@@ -214,13 +304,15 @@ container.register('dbStrategy', new MongoStrategy())
       → Controller calls req.getService('userService')
 ```
 
+Auto-discovery scans `src/repositories/*.repository.js` and `src/services/*Service.js` — no manual registration needed.
+
 ### Strategy Pattern
 
-| Domain | Active | Alternate | New Features |
+| Domain | Active | Alternate | Also Available |
 |---|---|---|---|
-| Database | `MongoStrategy` | `PostgresStrategy` | `join`, `withTransaction`, `softDelete`, `restore` |
-| Storage | `LocalStorageStrategy` | `S3StorageStrategy` | `upload`, `delete`, `getUrl` |
-| Email | `ConsoleEmailStrategy` | `StubEmailStrategy` | `send` |
+| Database | `MongoStrategy` | `PostgresStrategy` | `smtp` — real SMTP |
+| Storage | `LocalStorageStrategy` | `S3StorageStrategy` | |
+| Email | `ConsoleEmailStrategy` | `StubEmailStrategy` | |
 
 Switch drivers by changing `DB_DRIVER`, `STORAGE_DRIVER`, or `EMAIL_DRIVER` in `.env`.
 
@@ -232,7 +324,15 @@ favicon → helmet → cors → cookieParser → json(limit) → urlencoded
     → activityLog → routes → fallback → errorHandler
 ```
 
-Order defined in `MIDDLEWARE_PIPELINE` in `src/config/system.js`.
+Order defined in `MIDDLEWARE_PIPELINE` in `src/config/system.js`. Route-level rate limiting is prepended automatically via the `rateLimit` property.
+
+### Request Lifecycle
+
+```
+Request → pipeline → routes → [auth/validate/rate-limit] → controller
+  → service → repository → dbStrategy → response
+    → errorHandler catches all typed errors → structured JSON
+```
 
 ---
 
@@ -247,10 +347,10 @@ npm run dev
 
 ```bash
 # Docker
-bash docker-cli/dev.sh                # Start dev with MongoDB
-bash docker-cli/dev-postgres.sh       # Start dev with PostgreSQL
-bash docker-cli/seed.sh               # Seed database
-bash docker-cli/test.sh               # Run tests
+bash src/tools/docker-cli/dev.sh              # Start dev with MongoDB
+bash src/tools/docker-cli/dev-postgres.sh     # Start dev with PostgreSQL
+bash src/tools/docker-cli/seed.sh             # Seed database
+bash src/tools/docker-cli/test.sh             # Run tests
 ```
 
 ---
@@ -266,8 +366,12 @@ bash docker-cli/test.sh               # Run tests
 | `POSTGRES_URI` | — | PostgreSQL connection string |
 | `JWT_SECRET` | — | Access token signing key |
 | `JWT_REFRESH_SECRET` | — | Refresh token signing key |
+| `JWT_EXPIRES_IN` | `15m` | Access token TTL |
+| `JWT_REFRESH_EXPIRES_IN` | `7d` | Refresh token TTL |
 | `CORS_ORIGIN` | `*` | Allowed origins |
 | `RATE_LIMIT_MAX` | `100` | Requests per 15min window |
+| `STORAGE_DRIVER` | `local` | `local` or `s3` |
+| `EMAIL_DRIVER` | `console` | `console`, `smtp`, or `stub` |
 
 ---
 
@@ -279,17 +383,18 @@ npm test                          # 117 tests, 12 suites, ~10s
 
 | Suite | Tests | Coverage |
 |---|---|---|
-| `auth.int.test.js` | 25 | Full auth flow |
-| `auth.middleware.test.js` | 10 | Authenticate + authorize |
+| `auth.int.test.js` | 25 | Full auth flow (register, login, refresh, forgot, reset, me) |
+| `auth.middleware.test.js` | 10 | Authenticate + authorize middleware |
+| `strategies.test.js` | 20 | Mongo, Postgres, LocalStorage, S3Storage |
+| `apiKey.test.js` | 12 | API key generation, validation, revocation, expiry |
 | `dynamic-routes.test.js` | 7 | Path params, query validation |
-| `strategies.test.js` | 20 | Mongo, Postgres, LocalStorage, S3 |
-| `apiKey.test.js` | 12 | API key generation, validation, revocation |
-| `softDelete.strategy.test.js` | 4 | Soft delete |
-| `email.strategy.test.js` | 3 | Console, SMTP, stub |
+| `security.repository.test.js` | 10 | JWT sign/verify, bcrypt |
 | `rateLimiter.test.js` | 8 | Rate limiter factory |
-| `security.repository.test.js` | 10 | JWT + bcrypt |
-| `env.test.js` | 3 | Env loading |
-| `init.test.js` | 3 | Bootstrap |
+| `softDelete.strategy.test.js` | 4 | Soft delete on Mongo + Postgres |
+| `email.strategy.test.js` | 3 | Console, SMTP, stub email |
+| `activityLog.test.js` | 3 | Activity log service |
+| `env.test.js` | 3 | Environment loading |
+| `init.test.js` | 3 | Bootstrap initialization |
 | Static analysis | 14 | Lint-style checks |
 
 ---
