@@ -248,7 +248,7 @@ module.exports = { list, get, create, update, destroy };
 function makeRoute() {
   const dir = path.join(ROOT, 'src', 'routes', 'api', 'v1', kebab);
 
-  write(path.join(dir, 'create.js'), `const validate = require('../../../../middlewares/validation');
+  write(path.join(dir, 'create.route.js'), `const validate = require('../../../../middlewares/validation');
 const createSchema = require('../../../../validation/${kebab}/create');
 const { create } = require('../../../../controllers/${camel}.controller');
 
@@ -267,7 +267,7 @@ module.exports = {
   },
 };
 `);
-  write(path.join(dir, 'list.js'), `const { validateQuery } = require('../../../../middlewares/validation');
+  write(path.join(dir, 'list.route.js'), `const { validateQuery } = require('../../../../middlewares/validation');
 const listQuery = require('../../../../validation/${kebab}/list');
 const { list } = require('../../../../controllers/${camel}.controller');
 
@@ -285,7 +285,7 @@ module.exports = {
   },
 };
 `);
-  write(path.join(dir, 'get.js'), `const authenticate = require('../../../../middlewares/auth');
+  write(path.join(dir, 'get.route.js'), `const authenticate = require('../../../../middlewares/auth');
 const { get } = require('../../../../controllers/${camel}.controller');
 
 module.exports = {
@@ -304,7 +304,7 @@ module.exports = {
   },
 };
 `);
-  write(path.join(dir, 'update.js'), `const authenticate = require('../../../../middlewares/auth');
+  write(path.join(dir, 'update.route.js'), `const authenticate = require('../../../../middlewares/auth');
 const validate = require('../../../../middlewares/validation');
 const updateSchema = require('../../../../validation/${kebab}/update');
 const { update } = require('../../../../controllers/${camel}.controller');
@@ -325,7 +325,7 @@ module.exports = {
   },
 };
 `);
-  write(path.join(dir, 'delete.js'), `const authenticate = require('../../../../middlewares/auth');
+  write(path.join(dir, 'delete.route.js'), `const authenticate = require('../../../../middlewares/auth');
 const { destroy } = require('../../../../controllers/${camel}.controller');
 
 module.exports = {

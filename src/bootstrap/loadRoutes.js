@@ -15,7 +15,7 @@ function collectRoutes(dir = routesDir, basePath = '') {
 
     if (entry.isDirectory()) {
       routes.push(...collectRoutes(fullPath, `${basePath}/${entry.name}`));
-    } else if (entry.isFile() && entry.name.endsWith('.js')) {
+    } else if (entry.isFile() && entry.name.endsWith('.route.js')) {
       const def = require(fullPath);
       if (!def || !def.method || !def.handler) continue;
       const p = def.path || `/${path.basename(entry.name, '.js')}`;
@@ -65,7 +65,7 @@ function buildRouter(dir = routesDir) {
     if (entry.isDirectory()) {
       const subRouter = buildRouter(fullPath);
       router.use(`/${entry.name}`, subRouter);
-    } else if (entry.isFile() && entry.name.endsWith('.js')) {
+    } else if (entry.isFile() && entry.name.endsWith('.route.js')) {
       const def = require(fullPath);
       if (!def) continue;
 
