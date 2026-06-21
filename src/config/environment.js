@@ -30,7 +30,13 @@ if (envType === 'production') {
 module.exports = {
   /** Current runtime environment (development, production, test) */
   env: envType,
-
+  url : process.env.APP_URL || '',
+  /** Whether to load Swagger docs (true/false). Disable in production for better performance. */
+  showDocs: process.env.SHOW_DOCS === 'true' || process.env.SHOW_DOCS === '1',
+  /** Auto-generate model schemas in Swagger components (true/false) */
+  swaggerAutoSchema: process.env.SWAGGER_AUTO_SCHEMA !== 'false' && process.env.SWAGGER_AUTO_SCHEMA !== '0',
+  /** Auto-generate sanitized {Model}Response schemas (true/false) */
+  swaggerAutoResponse: process.env.SWAGGER_AUTO_RESPONSE !== 'false' && process.env.SWAGGER_AUTO_RESPONSE !== '0',
   /** API route prefix — folder under routes/ to scan and mount point */
   routePrefix: process.env.ROUTE_PREFIX || '',
   /** HTTP server port */

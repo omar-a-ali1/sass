@@ -40,8 +40,9 @@ const startServer = async () => {
     console.log(`🌐 ENVIRONMENT  :  ${envBadge}`);
     console.log(`🔌 PORT         :  ${config.port}`);
     console.log(`💾 DATABASE     :  ${dbLabel}`);
-    console.log(`🔒 CORS ORIGIN  :  ${config.cors.origin}`);
+    console.log(`🔒  CORS ORIGIN  :  ${config.cors.origin}`);
     console.log(`🎟️ JWT EXPIRES  :  ${config.jwt.expiresIn}`);
+    console.log(`   APP URL      : ${config.url}`)
     console.log('========================================================\n');
 
     logger.info(`Server efficiently running in [${config.env}] mode on port ${config.port}`);

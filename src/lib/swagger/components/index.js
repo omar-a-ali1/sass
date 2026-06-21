@@ -54,22 +54,29 @@ function loadValidationSchemas(dir, baseDir = dir) {
 const SENSITIVE_FIELDS = new Set(['password', '__v', 'hashedKey', 'resetToken', 'refreshToken']);
 
 /** Auto-generate OpenAPI schemas from loaded Mongoose models */
+const config = require('../../../config/environment');
 const modelSchemas = {};
 for (const [name, mod] of Object.entries(models)) {
   const raw = m2s(mod);
-  modelSchemas[name] = raw;
+  raw.title = name;
 
-  // Generate a sanitized {Name}Response variant with sensitive fields removed
-  const cleaned = JSON.parse(JSON.stringify(raw));
-  if (cleaned.properties) {
-    for (const field of SENSITIVE_FIELDS) {
-      delete cleaned.properties[field];
+  if (config.swaggerAutoSchema) {
+    modelSchemas[name] = raw;
+  }
+
+  if (config.swaggerAutoResponse) {
+    const resp = JSON.parse(JSON.stringify(raw));
+    if (resp.properties) {
+      for (const field of SENSITIVE_FIELDS) {
+        delete resp.properties[field];
+      }
     }
+    if (Array.isArray(resp.required)) {
+      resp.required = resp.required.filter(f => !SENSITIVE_FIELDS.has(f));
+    }
+    resp.title = `${name}Response`;
+    modelSchemas[`${name}Response`] = resp;
   }
-  if (Array.isArray(cleaned.required)) {
-    cleaned.required = cleaned.required.filter(f => !SENSITIVE_FIELDS.has(f));
-  }
-  modelSchemas[`${name}Response`] = cleaned;
 }
 
 /** Auto-scan validation/ directory for Joi schemas */

@@ -33,12 +33,12 @@ const container = require('./loadContainer');
 /** 3. Build API router from auto-scanned route files */
 const { Router } = require('./loadRoutes');
 
-/** 4. Generate Swagger paths from route definitions (non-production only) */
+/** 4. Generate Swagger paths from route definitions (controlled by SHOW_DOCS env var) */
 let swaggerDoc = null;
 let serveSwaggerUi = null;
 let setupSwaggerUi = null;
 
-if (config.env !== 'production') {
+if (config.showDocs) {
   const swaggerUi = require('swagger-ui-express');
   const { generatePaths } = require('./loadSwagger');
 
