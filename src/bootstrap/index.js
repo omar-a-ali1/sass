@@ -75,6 +75,7 @@ const middlewareMap = {
   injectServices: require('../middlewares/injectServices'),
   responder: require('../middlewares/responder'),
   activityLog: require('../middlewares/activityLog'),
+  csrf: require('../middlewares/csrf'),
 };
 
 /** Apply middleware in the order defined by config */

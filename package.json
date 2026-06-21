@@ -46,6 +46,7 @@
     "seed:clean": "node src/tools/cli/seed.js --clean",
     "make:seeder": "node src/tools/cli/make.js seeder",
     "sync": "node src/tools/cli/sync-db.js",
+    "cb-sync": "node src/tools/cli/cb-sync.js",
     "docker:dev": "bash src/tools/docker-cli/dev.sh",
     "docker:dev-postgres": "bash src/tools/docker-cli/dev-postgres.sh",
     "docker:test": "bash src/tools/docker-cli/test.sh",

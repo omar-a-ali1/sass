@@ -19,6 +19,7 @@ dotenv.config({
 
 if (envType === 'production') {
   const criticalKeys = ['PORT', 'MONGO_URI', 'JWT_SECRET', 'CORS_ORIGIN'];
+  if (process.env.DB_DRIVER === 'postgres') criticalKeys.push('POSTGRES_URI');
   criticalKeys.forEach((key) => {
     if (!process.env[key]) {
       throw new Error(`[CRITICAL CONFIG ERROR]: Missing environment variable [${key}] in production!`);
@@ -31,6 +32,8 @@ module.exports = {
   /** Current runtime environment (development, production, test) */
   env: envType,
   url : process.env.APP_URL || '',
+  /** Authentication project type — 'jwt' (Bearer), 'cookies' (cookie-based), or 'both' */
+  projectType: process.env.PROJECT_TYPE || 'jwt',
   /** Whether to load Swagger docs (true/false). Disable in production for better performance. */
   showDocs: process.env.SHOW_DOCS === 'true' || process.env.SHOW_DOCS === '1',
   /** Auto-generate model schemas in Swagger components (true/false) */
@@ -97,6 +100,17 @@ module.exports = {
   apiKey: {
     /** Prefix for generated API keys (e.g. 'sass' produces 'sass_a1b2...') */
     prefix: process.env.API_KEY_PREFIX || 'sass',
+  },
+
+  cache: {
+    /** Cache driver ('memory', 'file', or 'redis') */
+    driver: process.env.CACHE_DRIVER || 'memory',
+    /** Default TTL in seconds */
+    ttl: parseInt(process.env.CACHE_TTL, 10) || 300,
+    /** Redis connection string (used when driver is 'redis') */
+    redisUrl: process.env.REDIS_URL || '',
+    /** Redis key prefix */
+    redisPrefix: process.env.REDIS_PREFIX || 'sass:cache:',
   },
 
   storage: {

@@ -3,7 +3,7 @@ const SECURITY_DEFAULTS = {
   RATE_LIMIT_WINDOW_MS: 15 * 60 * 1000,
   RATE_LIMIT_MAX_REQUESTS: 100,
   CORS_METHODS: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
-  CORS_ALLOWED_HEADERS: ['Content-Type', 'Authorization', 'X-Request-ID']
+  CORS_ALLOWED_HEADERS: ['Content-Type', 'Authorization', 'X-Request-ID', 'X-CSRF-Token']
 };
 
 /**
@@ -17,6 +17,7 @@ const MIDDLEWARE_PIPELINE = [
   'cookieParser',
   'json',
   'urlencoded',
+  'csrf',
   'rateLimiter',
   'perfMonitor',
   'tracer',

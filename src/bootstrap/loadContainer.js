@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const DependencyContainer = require('./container');
 const config = require('../config/environment');
+const loadStrategies = require('./loadStrategies');
 
 // ── Resolve constructor dependencies by parameter name ──
 function resolveDeps(ctor, container) {
@@ -39,54 +40,21 @@ function scanFiles(dir, suffix) {
     .filter(f => f.endsWith(suffix) && !EXCLUDED.includes(f))
     .map(f => ({
       name: f.replace(suffix, '').replace(/-/g, '').replace(/_/g, ''),
-      // services: userService.js → name is "user"
-      // repositories: user.repository.js → name is "user"
-      // We prepend the type suffix in registerName
       filePath: path.join(dir, f),
     }));
 }
 
 function registerName(base, type) {
   const camel = base.replace(/^./, c => c.toLowerCase());
-  // user → userRepository / userService
-  // auth → authService
-  // security → securityRepository / securityService
   return camel + type;
 }
 
 const container = new DependencyContainer();
 
-// Config is available as a dependency for services/repositories
 container.register('config', config);
 
 // ── 1. Strategies (manual — depend on config) ──
-
-const MongoStrategy = require('../lib/strategies/database/mongo.strategy');
-const PostgresStrategy = require('../lib/strategies/database/postgres.strategy');
-const LocalStorageStrategy = require('../lib/strategies/storage/localStorage.strategy');
-const S3StorageStrategy = require('../lib/strategies/storage/s3Storage.strategy');
-const ConsoleEmailStrategy = require('../lib/strategies/email/consoleEmail.strategy');
-const SmtpEmailStrategy = require('../lib/strategies/email/smtpEmail.strategy');
-const StubEmailStrategy = require('../lib/strategies/email/stubEmail.strategy');
-
-const dbDrivers = {
-  mongo: () => new MongoStrategy(),
-  postgres: () => new PostgresStrategy(),
-};
-container.register('dbStrategy', (dbDrivers[config.database.driver] || dbDrivers.mongo)());
-
-const storageDrivers = {
-  local: () => new LocalStorageStrategy({ uploadDir: config.storage.uploadDir, baseUrl: config.storage.baseUrl }),
-  s3: () => new S3StorageStrategy({ bucket: config.storage.s3Bucket, region: config.storage.s3Region }),
-};
-container.register('storageStrategy', (storageDrivers[config.storage.driver] || storageDrivers.local)());
-
-const emailDrivers = {
-  console: () => new ConsoleEmailStrategy(),
-  smtp: () => new SmtpEmailStrategy(),
-  stub: () => new StubEmailStrategy(),
-};
-container.register('emailStrategy', (emailDrivers[config.email.driver] || emailDrivers.console)());
+loadStrategies(container);
 
 // ── 2. Auto-discover repositories ──
 
